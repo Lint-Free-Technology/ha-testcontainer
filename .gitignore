@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Playwright
+test-results/
+playwright-report/
+
+# Visual snapshot actuals (only baselines are committed)
+tests/visual/snapshots/*.actual.png
+
+# Downloaded custom components (fetched by scripts/fetch_uix.py)
+custom_components/uix/
+custom_components/*/
+
+# Keep the README so the directory exists in git
+!custom_components/README.md
+
+# Home Assistant runtime state (created when using docker compose locally)
+ha-config/.storage/
+ha-config/home-assistant.log
+ha-config/home-assistant_v2.db
+ha-config/home-assistant_v2.db-shm
+ha-config/home-assistant_v2.db-wal
+ha-config/tts/
+ha-config/.cloud/
+
+# Keep themes README
+!ha-config/themes/README.md
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

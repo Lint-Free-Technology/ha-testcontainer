@@ -1,16 +1,22 @@
-# Home Assistant demo configuration for ha-testcontainer
+# ha-testcontainer demo configuration
 #
-# This configuration is designed to be mounted into the test container and
-# provide a rich environment for visual and integration testing.
+# A minimal, general-purpose Home Assistant configuration for use inside the
+# test container.  It intentionally avoids component-specific setup so that
+# any custom component (UIX, or otherwise) can be layered on top.
 #
-# Key integrations enabled:
-#   default_config  – recorder, history, logbook, mobile_app, …
-#   demo            – virtual entities (lights, sensors, weather, etc.)
-#   uix             – UI eXtension (CSS customisation, set up via config-flow)
+# What's loaded:
+#   default_config  – standard HA bundle (recorder, history, logbook, etc.)
+#   demo            – built-in virtual entities (lights, sensors, weather…)
+#                     so tests can target real state objects without hardware.
 #
-# The Lovelace dashboard is split into two modes:
-#   default (/lovelace)              – storage mode (managed via the UI)
-#   lovelace-uix-test (/lovelace/uix-test) – YAML mode (UIX test views, committed to git)
+# Lovelace is in *storage* mode (the HA default) so tests can also push
+# dashboard configuration via the REST API or import JSON files.
+# A secondary YAML-mode dashboard slot ("custom-tests") is reserved for
+# component tests to mount their own lovelace YAML file.
+#
+# Custom components placed in /config/custom_components/ are picked up
+# automatically.  Use HATestContainer(custom_components_path=...) or mount
+# the whole config dir to add your own.
 
 homeassistant:
   name: HA TestContainer
@@ -25,15 +31,13 @@ demo:
 lovelace:
   mode: storage
   dashboards:
-    lovelace-uix-test:
+    lovelace-custom-tests:
       mode: yaml
-      title: UIX Tests
-      filename: lovelace.yaml
+      title: Component Tests
+      filename: custom_lovelace.yaml
 
 frontend:
   themes: !include_dir_merge_named themes/
 
 logger:
   default: warning
-  logs:
-    custom_components.uix: debug

@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=61.0"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "ha-testcontainer"
@@ -28,11 +28,13 @@ dependencies = [
 visual = [
     "playwright>=1.50",
     "pytest-playwright>=0.5",
+    "Pillow>=10.0",
 ]
 test = [
     "pytest>=8.0",
     "pytest-playwright>=0.5",
     "playwright>=1.50",
+    "Pillow>=10.0",
 ]
 
 [project.urls]
@@ -42,6 +44,9 @@ Issues = "https://github.com/Lint-Free-Technology/ha-testcontainer/issues"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v"
+markers = [
+    "version_smoke: slow smoke tests that pull stable/beta/dev Docker images (deselected by default)",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

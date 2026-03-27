@@ -36,7 +36,7 @@ STARTUP_TIMEOUT = 120
 
 #: Default credentials used for the programmatic onboarding step.
 DEFAULT_USERNAME = "testadmin"
-DEFAULT_PASSWORD = "testpassword123"  # noqa: S105 – test-only credential
+DEFAULT_PASSWORD = "testpassword123"  # noqa: S105 - test-only credential
 
 
 class HAVersion:
