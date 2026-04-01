@@ -22,8 +22,6 @@ HA_CUSTOM_COMPONENTS_PATH
 from __future__ import annotations
 
 import os
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -37,28 +35,6 @@ from ha_testcontainer import HATestContainer, HAVersion
 REPO_ROOT = Path(__file__).parent.parent
 HA_CONFIG_DIR = REPO_ROOT / "ha-config"
 CUSTOM_COMPONENTS_DIR = REPO_ROOT / "custom_components"
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _ensure_uix_present() -> None:
-    """Download UIX if it is not already present in custom_components/."""
-    uix_dir = CUSTOM_COMPONENTS_DIR / "uix"
-    if uix_dir.is_dir() and (uix_dir / "manifest.json").exists():
-        return
-    print(
-        "\n[conftest] UIX not found in custom_components/ — running fetch_uix.py …",
-        flush=True,
-    )
-    script = REPO_ROOT / "scripts" / "fetch_uix.py"
-    subprocess.run(
-        [sys.executable, str(script)],
-        check=True,
-        cwd=REPO_ROOT,
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -86,10 +62,13 @@ def ha(ha_version: str, ha_config_path: Path, ha_custom_components_path: Path):
     """Session-scoped HATestContainer.
 
     Mounts ``ha-config/`` as ``/config`` and ``custom_components/`` as
-    ``/config/custom_components``.  UIX is automatically downloaded if it
-    is not already present.
+    ``/config/custom_components``.
+
+    Populate ``custom_components/`` before running tests by using the fetch
+    script for any component you want to test, e.g.::
+
+        python scripts/fetch_component.py Lint-Free-Technology/uix
     """
-    _ensure_uix_present()
     container = HATestContainer(
         version=ha_version,
         config_path=ha_config_path,

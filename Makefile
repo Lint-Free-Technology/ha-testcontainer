@@ -2,17 +2,25 @@
 
 PYTHON ?= python3
 
+# The default component to fetch when running `make setup`.
+# Override on the command line: make setup COMPONENT=custom-cards/button-card
+COMPONENT ?= Lint-Free-Technology/uix
+
 # ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
 
-## Download UIX into custom_components/ (latest release)
+## Fetch the latest release of COMPONENT into custom_components/
+## Usage:  make setup
+##         make setup COMPONENT=owner/repo
+##         make setup COMPONENT=owner/repo VERSION=5.3.1
 setup:
-	$(PYTHON) scripts/fetch_uix.py
+	$(PYTHON) scripts/fetch_component.py $(COMPONENT) $(VERSION)
 
-## Download a specific UIX version: make setup-version VERSION=5.3.1
-setup-version:
-	$(PYTHON) scripts/fetch_uix.py $(VERSION)
+## List releases for COMPONENT
+## Usage:  make list-releases COMPONENT=owner/repo
+list-releases:
+	$(PYTHON) scripts/fetch_component.py $(COMPONENT) --list
 
 ## Install Python dependencies (test extras)
 install:
@@ -55,8 +63,8 @@ down:
 # Housekeeping
 # ---------------------------------------------------------------------------
 
-## Remove downloaded UIX, pytest cache, and snapshot actuals
+## Remove all downloaded custom components, pytest cache, and snapshot actuals
 clean:
-	rm -rf custom_components/uix
+	find custom_components -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
 	rm -rf .pytest_cache __pycache__ tests/__pycache__ tests/visual/__pycache__
 	find tests/visual/snapshots -name "*.actual.png" -delete

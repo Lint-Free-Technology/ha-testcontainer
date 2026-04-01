@@ -22,11 +22,13 @@ test stack.
 | **Automatic onboarding** | Creates an admin user and mints a long-lived API token with no manual interaction |
 | **Demo entities** | Built-in HA `demo` integration gives you lights, sensors, weather objects immediately |
 | **Custom config** | Mount any `configuration.yaml` tree via `config_path=` |
-| **Custom components** | Mount a `custom_components/` directory via `custom_components_path=` |
-| **Storage-mode dashboard** | Default Lovelace dashboard in storage mode; a secondary YAML slot for component test views |
+| **Custom components** | Mount any `custom_components/` directory via `custom_components_path=` |
+| **Fetch any component** | `scripts/fetch_component.py owner/repo` — downloads any GitHub-hosted HA component |
+| **Storage-mode dashboard** | Default Lovelace dashboard in storage mode; REST-pushable for tests |
 | **REST API helper** | `ha.api("GET", "states")` — authenticated calls with zero boilerplate |
-| **Integration setup** | `ha.setup_integration("uix")` — drives config-flow programmatically |
-| **Playwright visual tests** | Session-scoped browser context, token injection, snapshot comparison |
+| **Integration setup** | `ha.setup_integration("my_domain")` — drives config-flow programmatically |
+| **Playwright visual tests** | Session-scoped browser context, token injection, pixel-diff snapshot comparison |
+| **Boilerplate example** | `examples/test_custom_component.py` — copy, fill in TODO values, done |
 
 ---
 
@@ -39,11 +41,18 @@ pip install -e ".[test]"
 playwright install chromium
 ```
 
-### 2 — Download UIX (or another custom component)
+### 2 — Fetch a custom component
 
 ```bash
-make setup                         # latest UIX release
-python scripts/fetch_uix.py 5.3.1  # specific version
+# Any GitHub-hosted HA custom component:
+python scripts/fetch_component.py Lint-Free-Technology/uix
+python scripts/fetch_component.py Lint-Free-Technology/uix 5.3.1   # pinned version
+python scripts/fetch_component.py custom-cards/button-card
+
+# Or via make (default component is Lint-Free-Technology/uix):
+make setup
+make setup COMPONENT=custom-cards/button-card
+make setup COMPONENT=Lint-Free-Technology/uix VERSION=5.3.1
 ```
 
 ### 3 — Run tests
@@ -67,17 +76,16 @@ make down
 ```python
 from ha_testcontainer import HATestContainer, HAVersion
 
-# As a context manager (recommended)
 with HATestContainer(
-    version=HAVersion.STABLE,
-    config_path="path/to/ha-config",
-    custom_components_path="path/to/custom_components",
+    version=HAVersion.STABLE,          # or "beta", "dev", "2024.6.0"
+    config_path="ha-config",
+    custom_components_path="custom_components",
 ) as ha:
-    # REST API
-    states = ha.api("GET", "states").json()
-
-    # Set up a custom component via config-flow
+    # Set up any custom component via config-flow
     ha.setup_integration("uix")
+
+    # REST API — authenticated, zero boilerplate
+    states = ha.api("GET", "states").json()
 
     print(ha.get_url())    # http://localhost:<random-port>
     print(ha.get_token())  # long-lived access token
@@ -104,15 +112,37 @@ def test_api(ha):
 
 ### Playwright visual test example
 
-```python
-from tests.visual.conftest import assert_snapshot
+See [`examples/test_custom_component.py`](examples/test_custom_component.py) for a
+fully annotated boilerplate that any component author can copy.
 
-def test_my_card_looks_right(ha_page, ha_url):
-    ha_page.goto(f"{ha_url}/lovelace/0", wait_until="networkidle")
+```python
+from ha_testcontainer.visual import PAGE_LOAD_TIMEOUT, assert_snapshot
+
+def test_my_card(ha_page, ha_url):
+    ha_page.goto(f"{ha_url}/lovelace/0", wait_until="networkidle",
+                 timeout=PAGE_LOAD_TIMEOUT)
     assert_snapshot(ha_page, "my_card_baseline")
 ```
 
 Run `SNAPSHOT_UPDATE=1 pytest tests/visual/` to create or update baselines.
+
+---
+
+## Fetching custom components
+
+`scripts/fetch_component.py` works with **any** GitHub repository that follows
+the standard HA custom-component layout (a `custom_components/<name>/` directory
+in the repository root):
+
+```
+python scripts/fetch_component.py owner/repo             # latest release
+python scripts/fetch_component.py owner/repo 5.3.1       # specific version
+python scripts/fetch_component.py owner/repo --list      # list releases
+python scripts/fetch_component.py owner/repo --target-dir /other/path
+```
+
+The script auto-discovers all `custom_components/` sub-directories in the
+release archive, so multi-component repositories are handled correctly.
 
 ---
 
@@ -149,21 +179,23 @@ HA_VERSION=2024.6.0 make test
 ```
 ha-testcontainer/
 ├── ha_testcontainer/
-│   ├── __init__.py          # public API: HATestContainer, HAVersion
-│   └── container.py         # HATestContainer implementation
+│   ├── __init__.py          # public API: HATestContainer, HAVersion, visual helpers
+│   ├── container.py         # HATestContainer implementation
+│   └── visual.py            # PAGE_LOAD_TIMEOUT, assert_snapshot, inject_ha_token
 ├── ha-config/
 │   ├── configuration.yaml   # demo HA config (default_config + demo integration)
 │   └── themes/              # theme YAML files (auto-loaded)
 ├── custom_components/
-│   └── README.md            # populated by scripts/fetch_uix.py (gitignored)
+│   └── README.md            # populated by scripts/fetch_component.py (gitignored)
 ├── scripts/
-│   └── fetch_uix.py         # download UIX from GitHub releases
+│   └── fetch_component.py   # download any HA component from GitHub releases
+├── examples/
+│   └── test_custom_component.py  # boilerplate visual test — copy & customise
 ├── tests/
 │   ├── conftest.py          # session-scoped ha / ha_url / ha_token fixtures
 │   ├── test_container.py    # container lifecycle + REST API tests
 │   └── visual/
-│       ├── conftest.py      # Playwright fixtures + assert_snapshot helper
-│       ├── test_uix.py      # UIX visual regression tests (example usage)
+│       ├── conftest.py      # Playwright fixtures (ha_page, ha_browser_context)
 │       └── snapshots/       # baseline PNGs (committed); *.actual.png (gitignored)
 ├── docker-compose.yml        # local dev: docker compose up
 ├── Makefile                  # setup / test / update-snapshots targets
@@ -185,21 +217,21 @@ On the **first run** (or when `SNAPSHOT_UPDATE=1` is set), the actual
 screenshot becomes the baseline.  Subsequent runs diff the two; any pixel
 difference causes the test to fail.
 
-This makes it trivially easy for UIX to catch visual regressions caused by a
-HA core update or a UIX CSS change.
+Baselines are placed **next to the calling test file** automatically — no
+configuration needed.
 
 ---
 
 ## Migrating from UIX's legacy `test/` setup
 
-UIX previously used a `test/docker-compose.yaml` + `test/configuration.yaml`
-local stack.  The migration path is:
+UIX's `test/docker-compose.yaml` + `test/configuration.yaml` + `test/lovelace.yaml`
+are replaced by `make up` and UIX writing its own `tests/` using `HATestContainer`.
 
 1. Add `ha-testcontainer` as a dev dependency.
-2. Run `python scripts/fetch_uix.py` to populate `custom_components/uix/`.
+2. Fetch UIX: `python scripts/fetch_component.py Lint-Free-Technology/uix`.
 3. Replace `docker compose -f test/docker-compose.yaml up` with `make up`.
-4. Move UIX-specific Lovelace views into UIX's own `tests/` directory,
-   using `HATestContainer` and the Playwright fixtures from this package.
+4. Copy `examples/test_custom_component.py` into UIX's `tests/visual/`, fill in
+   UIX-specific TODO values, and add UIX-specific test cases.
 5. Delete UIX's `test/` directory.
 
 ---

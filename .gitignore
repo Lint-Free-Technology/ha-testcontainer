@@ -23,11 +23,9 @@ playwright-report/
 # Visual snapshot actuals (only baselines are committed)
 tests/visual/snapshots/*.actual.png
 
-# Downloaded custom components (fetched by scripts/fetch_uix.py)
-custom_components/uix/
+# Downloaded custom components (fetched by scripts/fetch_component.py)
+# Each component is a sub-directory; exclude all of them, keep only the README.
 custom_components/*/
-
-# Keep the README so the directory exists in git
 !custom_components/README.md
 
 # Home Assistant runtime state (created when using docker compose locally)

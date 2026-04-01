@@ -4,8 +4,8 @@ These tests verify:
   - The container starts and HA becomes reachable.
   - Onboarding is completed automatically (a token is available).
   - The HA REST API is reachable and returns expected data.
-  - Custom components (UIX) loaded from the mounted directory are detected.
-  - Integration setup via config-flow works (UIX as the example).
+  - Demo entities are available via the built-in demo integration.
+  - The storage-mode Lovelace API endpoint is reachable.
 """
 
 from __future__ import annotations
@@ -79,37 +79,16 @@ class TestDemoEntities:
         assert sensors, "Expected at least one demo sensor entity"
 
 
-class TestCustomComponents:
-    def test_uix_manifest_loaded(self, ha):
-        """UIX's Python component registers itself with HA on startup.
-
-        The /api/config endpoint lists loaded integrations; UIX should appear
-        once its config-flow entry has been created.
-        """
-        # First set up UIX via the config-flow API.
-        result = ha.setup_integration("uix")
-        # Config-flow can return 'create_entry' (first time) or 'abort'
-        # (single_instance_allowed if already set up).
-        assert result.get("type") in ("create_entry", "abort"), (
-            f"Unexpected config-flow result: {result}"
-        )
-
-    def test_uix_js_is_served(self, ha_url: str, ha_token: str):
-        """The UIX frontend script should be accessible once UIX is set up."""
-        resp = requests.get(
-            f"{ha_url}/uix/uix.js",
-            headers={"Authorization": f"Bearer {ha_token}"},
-            timeout=15,
-        )
-        assert resp.status_code == 200, (
-            f"UIX JS not served (got {resp.status_code}). "
-            "Ensure UIX is installed in custom_components/."
-        )
-
-
 class TestStorageDashboard:
     def test_lovelace_storage_endpoint(self, ha):
         """The storage-mode Lovelace dashboard config endpoint is reachable."""
         resp = ha.api("GET", "lovelace/config")
         # 200 = dashboard already has a config; 404 = not yet initialised (both are fine).
         assert resp.status_code in (200, 404)
+
+    def test_push_lovelace_config(self, ha):
+        """A Lovelace config can be pushed via the REST API."""
+        config = {"title": "Test", "views": [{"title": "Test View", "path": "test"}]}
+        resp = ha.api("POST", "lovelace/config?force=true", json=config)
+        assert resp.status_code in (200, 201)
+
