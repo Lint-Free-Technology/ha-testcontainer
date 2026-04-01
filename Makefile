@@ -1,4 +1,4 @@
-.PHONY: setup install test test-visual test-smoke update-snapshots up down clean
+.PHONY: setup fetch-plugin list-releases list-plugin-releases install test test-visual test-smoke update-snapshots up down clean
 
 PYTHON ?= python3
 
@@ -21,6 +21,17 @@ setup:
 ## Usage:  make list-releases COMPONENT=owner/repo
 list-releases:
 	$(PYTHON) scripts/fetch_component.py $(COMPONENT) --list
+
+## Download a frontend dashboard plugin (JS) and register it as a Lovelace resource
+## Usage:  make fetch-plugin PLUGIN=owner/repo
+##         make fetch-plugin PLUGIN=owner/repo VERSION=1.2.3
+fetch-plugin:
+	$(PYTHON) scripts/fetch_plugin.py $(PLUGIN) $(VERSION)
+
+## List available releases for a dashboard plugin
+## Usage:  make list-plugin-releases PLUGIN=owner/repo
+list-plugin-releases:
+	$(PYTHON) scripts/fetch_plugin.py $(PLUGIN) --list
 
 ## Install Python dependencies (test extras)
 install:
@@ -63,8 +74,9 @@ down:
 # Housekeeping
 # ---------------------------------------------------------------------------
 
-## Remove all downloaded custom components, pytest cache, and snapshot actuals
+## Remove all downloaded custom components, plugins, pytest cache, and snapshot actuals
 clean:
 	find custom_components -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
+	find ha-config/www/dashboard -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} + 2>/dev/null || true
 	rm -rf .pytest_cache __pycache__ tests/__pycache__ tests/visual/__pycache__
 	find tests/visual/snapshots -name "*.actual.png" -delete

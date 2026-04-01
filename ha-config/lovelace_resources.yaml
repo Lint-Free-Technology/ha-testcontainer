@@ -1,0 +1,5 @@
+# Lovelace frontend resources - managed by scripts/fetch_plugin.py
+# Add plugins with:  python scripts/fetch_plugin.py owner/repo
+# Remove entries manually or re-run the script.
+#
+[]

@@ -37,8 +37,13 @@ ha-config/home-assistant_v2.db-wal
 ha-config/tts/
 ha-config/.cloud/
 
-# Keep themes README
+# Frontend plugins downloaded by scripts/fetch_plugin.py
+# JS files are excluded; lovelace_resources.yaml is committed.
+ha-config/www/dashboard/*/
+
+# Keep themes README and www README
 !ha-config/themes/README.md
+!ha-config/www/README.md
 
 # Editor / OS
 .DS_Store

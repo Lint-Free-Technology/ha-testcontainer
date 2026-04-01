@@ -35,6 +35,7 @@ lovelace:
       mode: yaml
       title: Component Tests
       filename: custom_lovelace.yaml
+  resources: !include lovelace_resources.yaml
 
 frontend:
   themes: !include_dir_merge_named themes/

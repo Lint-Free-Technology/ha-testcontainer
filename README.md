@@ -24,6 +24,7 @@ test stack.
 | **Custom config** | Mount any `configuration.yaml` tree via `config_path=` |
 | **Custom components** | Mount any `custom_components/` directory via `custom_components_path=` |
 | **Fetch any component** | `scripts/fetch_component.py owner/repo` — downloads any GitHub-hosted HA component |
+| **Fetch any frontend plugin** | `scripts/fetch_plugin.py owner/repo` — downloads any JS dashboard plugin; registers it as a Lovelace resource |
 | **Storage-mode dashboard** | Default Lovelace dashboard in storage mode; REST-pushable for tests |
 | **REST API helper** | `ha.api("GET", "states")` — authenticated calls with zero boilerplate |
 | **Integration setup** | `ha.setup_integration("my_domain")` — drives config-flow programmatically |
@@ -44,15 +45,29 @@ playwright install chromium
 ### 2 — Fetch a custom component
 
 ```bash
-# Any GitHub-hosted HA custom component:
+# Any GitHub-hosted HA custom component (Python, goes into custom_components/):
 python scripts/fetch_component.py Lint-Free-Technology/uix
 python scripts/fetch_component.py Lint-Free-Technology/uix 5.3.1   # pinned version
-python scripts/fetch_component.py custom-cards/button-card
 
 # Or via make (default component is Lint-Free-Technology/uix):
 make setup
-make setup COMPONENT=custom-cards/button-card
 make setup COMPONENT=Lint-Free-Technology/uix VERSION=5.3.1
+```
+
+### 2b — Fetch a frontend plugin (optional)
+
+Frontend plugins are JavaScript dashboard modules (Lovelace cards, etc.),
+distinct from Python custom components.  They are downloaded into
+`ha-config/www/dashboard/` and automatically served by HA at `/local/…`.
+
+```bash
+# Download and register a dashboard plugin:
+python scripts/fetch_plugin.py custom-cards/button-card
+python scripts/fetch_plugin.py thomasloven/lovelace-card-mod 3.4.4
+
+# Or via make:
+make fetch-plugin PLUGIN=custom-cards/button-card
+make fetch-plugin PLUGIN=thomasloven/lovelace-card-mod VERSION=3.4.4
 ```
 
 ### 3 — Run tests
@@ -146,6 +161,31 @@ release archive, so multi-component repositories are handled correctly.
 
 ---
 
+## Fetching frontend plugins (dashboard cards)
+
+`scripts/fetch_plugin.py` downloads **JavaScript dashboard modules** — Lovelace
+cards and similar frontend-only plugins — from GitHub releases.  These are
+distinct from Python custom components: they live in `www/` rather than
+`custom_components/`, and are loaded by the HA frontend via Lovelace resources.
+
+```
+python scripts/fetch_plugin.py owner/repo             # latest release
+python scripts/fetch_plugin.py owner/repo 1.2.3       # specific version
+python scripts/fetch_plugin.py owner/repo --list      # list releases
+python scripts/fetch_plugin.py owner/repo --plugin-name custom-name
+python scripts/fetch_plugin.py owner/repo --resource-type js   # legacy (default: module)
+```
+
+The script:
+1. Downloads JS files from the release (assets, zip assets, or source archive fallback).
+2. Places them at `ha-config/www/dashboard/<plugin-name>/<file>.js`.
+3. Registers each file as a Lovelace resource in `ha-config/lovelace_resources.yaml`.
+
+HA serves `ha-config/www/` at `/local/`, so the plugin is immediately available
+to Lovelace dashboards as `/local/dashboard/<plugin-name>/<file>.js`.
+
+---
+
 ## Configuration
 
 ### HA version
@@ -183,12 +223,15 @@ ha-testcontainer/
 │   ├── container.py         # HATestContainer implementation
 │   └── visual.py            # PAGE_LOAD_TIMEOUT, assert_snapshot, inject_ha_token
 ├── ha-config/
-│   ├── configuration.yaml   # demo HA config (default_config + demo integration)
-│   └── themes/              # theme YAML files (auto-loaded)
+│   ├── configuration.yaml        # demo HA config (default_config + demo integration)
+│   ├── lovelace_resources.yaml   # Lovelace resources list (managed by fetch_plugin.py)
+│   ├── www/                      # served at /local/ by HA; plugins downloaded here
+│   └── themes/                   # theme YAML files (auto-loaded)
 ├── custom_components/
-│   └── README.md            # populated by scripts/fetch_component.py (gitignored)
+│   └── README.md                 # populated by scripts/fetch_component.py (gitignored)
 ├── scripts/
-│   └── fetch_component.py   # download any HA component from GitHub releases
+│   ├── fetch_component.py        # download any HA Python component from GitHub releases
+│   └── fetch_plugin.py           # download any JS frontend plugin; register as resource
 ├── examples/
 │   └── test_custom_component.py  # boilerplate visual test — copy & customise
 ├── tests/
