@@ -17,9 +17,18 @@ Usage in a component's test file::
                      timeout=PAGE_LOAD_TIMEOUT)
         assert_snapshot(ha_page, "my_card_baseline")
 
-The snapshot baseline PNGs are stored in a ``snapshots/`` sub-directory next
-to the calling test file and committed to source control.  Run with
-``SNAPSHOT_UPDATE=1`` (or pass ``update=True``) to create or refresh baselines.
+Where baselines are stored
+--------------------------
+Baseline PNGs are placed in a ``snapshots/`` sub-directory **next to the
+calling test file** in the **consumer's own repository**.  They are part of
+the consumer project's version history — not part of ha-testcontainer.
+
+ha-testcontainer itself does not commit any snapshot files.  Any PNGs that
+are generated locally (e.g. when running the example tests) are gitignored
+inside this repository.
+
+Run with ``SNAPSHOT_UPDATE=1`` (or pass ``update=True``) to create or refresh
+baselines in the consumer's project.
 """
 
 from __future__ import annotations
@@ -102,8 +111,11 @@ def assert_snapshot(
     the screenshot is saved as the baseline.  Subsequent runs compare the new
     screenshot against the baseline; any pixel difference fails the test.
 
-    Baseline PNGs (``<name>.png``) are committed to source control.
-    Actual screenshots (``<name>.actual.png``) are gitignored.
+    Baseline PNGs (``<name>.png``) are placed in the ``snapshots/`` directory
+    next to the calling test file in the **consumer's own repository** and
+    should be committed there.
+    Actual screenshots (``<name>.actual.png``) are transient and should be
+    gitignored in the consumer's project.
 
     Parameters
     ----------

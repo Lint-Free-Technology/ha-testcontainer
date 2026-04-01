@@ -1,0 +1,3 @@
+# ha-testcontainer does not commit snapshot baselines.
+# Snapshots belong in the consumer's own repository.
+*.png

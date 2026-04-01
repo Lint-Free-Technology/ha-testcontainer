@@ -239,7 +239,7 @@ ha-testcontainer/
 │   ├── test_container.py    # container lifecycle + REST API tests
 │   └── visual/
 │       ├── conftest.py      # Playwright fixtures (ha_page, ha_browser_context)
-│       └── snapshots/       # baseline PNGs (committed); *.actual.png (gitignored)
+│       └── snapshots/       # gitignored — no baselines committed here (see below)
 ├── docker-compose.yml        # local dev: docker compose up
 ├── Makefile                  # setup / test / update-snapshots targets
 └── pyproject.toml
@@ -253,7 +253,7 @@ Snapshot tests follow a two-file convention:
 
 | File | Description |
 |---|---|
-| `snapshots/<name>.png` | **Committed baseline** — the ground truth |
+| `snapshots/<name>.png` | **Committed baseline** — the ground truth, lives in the **consumer's repo** |
 | `snapshots/<name>.actual.png` | Generated on every run — gitignored |
 
 On the **first run** (or when `SNAPSHOT_UPDATE=1` is set), the actual
@@ -262,6 +262,13 @@ difference causes the test to fail.
 
 Baselines are placed **next to the calling test file** automatically — no
 configuration needed.
+
+> **Important — baselines are stored in the consumer's repo, not here.**
+> ha-testcontainer is a reusable library; it does not commit any snapshot PNG
+> files.  All `*.png` files under `tests/visual/snapshots/` are gitignored in
+> this repository.  When you write visual tests for your own component, baselines
+> are committed in *your* project's `tests/visual/snapshots/` directory.
+> They will never appear in ha-testcontainer's history.
 
 ---
 

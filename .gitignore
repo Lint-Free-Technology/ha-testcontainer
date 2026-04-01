@@ -20,8 +20,11 @@ htmlcov/
 test-results/
 playwright-report/
 
-# Visual snapshot actuals (only baselines are committed)
-tests/visual/snapshots/*.actual.png
+# Visual snapshot files — ALL PNGs are excluded from this repo.
+# ha-testcontainer is a library; snapshot baselines belong in the consumer's
+# own repository, not here.  Running visual tests will create PNG files in
+# tests/visual/snapshots/ but none of them should ever be committed.
+tests/visual/snapshots/*.png
 
 # Downloaded custom components (fetched by scripts/fetch_component.py)
 # Each component is a sub-directory; exclude all of them, keep only the README.

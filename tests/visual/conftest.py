@@ -4,6 +4,13 @@ This conftest wires up a Playwright browser context that is pre-authenticated
 against the running HA instance.  The snapshot helpers and constants are
 imported from ``ha_testcontainer.visual`` — the same module that component
 authors use in their own tests.
+
+Note
+----
+ha-testcontainer does **not** store snapshot baselines in its own repository.
+Baselines belong in the consumer's repo, next to the test files that produce
+them.  Any PNG files that are generated locally under ``tests/visual/snapshots/``
+are gitignored and will never be committed here.
 """
 
 from __future__ import annotations
@@ -22,9 +29,6 @@ from ha_testcontainer.visual import (
 
 # Re-export for tests in this package that import directly from this conftest.
 __all__ = ["PAGE_LOAD_TIMEOUT", "HA_SETTLE_MS", "assert_snapshot"]
-
-SNAPSHOTS_DIR = Path(__file__).parent / "snapshots"
-SNAPSHOTS_DIR.mkdir(exist_ok=True)
 
 
 # ---------------------------------------------------------------------------
