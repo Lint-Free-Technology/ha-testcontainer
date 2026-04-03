@@ -14,10 +14,10 @@
 #   python scripts/fetch_component.py Lint-Free-Technology/uix
 #   python scripts/fetch_component.py custom-cards/button-card
 #
-# Or use make:
+# Or use make (COMPONENT is required):
 #
-#   make setup                                    # default: Lint-Free-Technology/uix
-#   make setup COMPONENT=custom-cards/button-card
+#   make setup COMPONENT=owner/repo
+#   make setup COMPONENT=Lint-Free-Technology/uix
 #   make setup COMPONENT=Lint-Free-Technology/uix VERSION=5.3.1
 #
 # Or point HATestContainer at a different directory:

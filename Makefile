@@ -2,19 +2,24 @@
 
 PYTHON ?= python3
 
-# The default component to fetch when running `make setup`.
-# Override on the command line: make setup COMPONENT=custom-cards/button-card
-COMPONENT ?= Lint-Free-Technology/uix
+# The component to fetch when running `make setup`.
+# This must be supplied on the command line — there is no default because
+# ha-testcontainer is generic and not tied to any specific component.
+# Usage:  make setup COMPONENT=owner/repo
+#         make setup COMPONENT=owner/repo VERSION=5.3.1
+COMPONENT ?=
 
 # ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
 
 ## Fetch the latest release of COMPONENT into custom_components/
-## Usage:  make setup
-##         make setup COMPONENT=owner/repo
+## Usage:  make setup COMPONENT=owner/repo
 ##         make setup COMPONENT=owner/repo VERSION=5.3.1
 setup:
+ifeq ($(COMPONENT),)
+	$(error COMPONENT is required. Usage: make setup COMPONENT=owner/repo [VERSION=x.y.z])
+endif
 	$(PYTHON) scripts/fetch_component.py $(COMPONENT) $(VERSION)
 
 ## List releases for COMPONENT
