@@ -1,0 +1,44 @@
+# ha-testcontainer demo configuration
+#
+# A minimal, general-purpose Home Assistant configuration for use inside the
+# test container.  It intentionally avoids component-specific setup so that
+# any custom component (UIX, or otherwise) can be layered on top.
+#
+# What's loaded:
+#   default_config  – standard HA bundle (recorder, history, logbook, etc.)
+#   demo            – built-in virtual entities (lights, sensors, weather…)
+#                     so tests can target real state objects without hardware.
+#
+# Lovelace is in *storage* mode (the HA default) so tests can also push
+# dashboard configuration via the REST API or import JSON files.
+# A secondary YAML-mode dashboard slot ("custom-tests") is reserved for
+# component tests to mount their own lovelace YAML file.
+#
+# Custom components placed in /config/custom_components/ are picked up
+# automatically.  Use HATestContainer(custom_components_path=...) or mount
+# the whole config dir to add your own.
+
+homeassistant:
+  name: HA TestContainer
+  country: US
+  unit_system: metric
+  time_zone: UTC
+
+default_config:
+
+demo:
+
+lovelace:
+  mode: storage
+  dashboards:
+    lovelace-custom-tests:
+      mode: yaml
+      title: Component Tests
+      filename: custom_lovelace.yaml
+  resources: !include lovelace_resources.yaml
+
+frontend:
+  themes: !include_dir_merge_named themes/
+
+logger:
+  default: warning

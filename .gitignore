@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Playwright
+test-results/
+playwright-report/
+
+# Visual snapshot files — ALL PNGs are excluded from this repo.
+# ha-testcontainer is a library; snapshot baselines belong in the consumer's
+# own repository, not here.  Running visual tests will create PNG files in
+# tests/visual/snapshots/ but none of them should ever be committed.
+tests/visual/snapshots/*.png
+
+# Downloaded custom components (fetched by scripts/fetch_component.py)
+# Each component is a sub-directory; exclude all of them, keep only the README.
+custom_components/*/
+!custom_components/README.md
+
+# Home Assistant runtime state (created when using docker compose locally)
+ha-config/.storage/
+ha-config/home-assistant.log
+ha-config/home-assistant_v2.db
+ha-config/home-assistant_v2.db-shm
+ha-config/home-assistant_v2.db-wal
+ha-config/tts/
+ha-config/.cloud/
+
+# Frontend plugins downloaded by scripts/fetch_plugin.py
+# JS files are excluded; lovelace_resources.yaml is committed.
+ha-config/www/dashboard/*/
+
+# Keep themes README and www README
+!ha-config/themes/README.md
+!ha-config/www/README.md
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
