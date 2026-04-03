@@ -49,8 +49,8 @@ playwright install chromium
 python scripts/fetch_component.py Lint-Free-Technology/uix
 python scripts/fetch_component.py Lint-Free-Technology/uix 5.3.1   # pinned version
 
-# Or via make (default component is Lint-Free-Technology/uix):
-make setup
+# Or via make (COMPONENT is required):
+make setup COMPONENT=Lint-Free-Technology/uix
 make setup COMPONENT=Lint-Free-Technology/uix VERSION=5.3.1
 ```
 
@@ -74,8 +74,10 @@ make fetch-plugin PLUGIN=thomasloven/lovelace-card-mod VERSION=3.4.4
 
 ```bash
 make test           # unit + integration tests (no browser)
-make test-visual    # Playwright visual tests
+make test-visual    # Playwright visual tests (requires Docker + Playwright)
 ```
+
+See **[Testing](#testing)** below for a full breakdown of each tier.
 
 ### 4 — Explore locally with docker compose
 
@@ -235,8 +237,9 @@ ha-testcontainer/
 ├── examples/
 │   └── test_custom_component.py  # boilerplate visual test — copy & customise
 ├── tests/
-│   ├── conftest.py          # session-scoped ha / ha_url / ha_token fixtures
-│   ├── test_container.py    # container lifecycle + REST API tests
+│   ├── conftest.py               # session-scoped ha / ha_url / ha_token fixtures
+│   ├── test_container_unit.py    # unit tests — no Docker needed (14 tests)
+│   ├── test_container.py         # integration tests — requires Docker (10 tests)
 │   └── visual/
 │       ├── conftest.py      # Playwright fixtures (ha_page, ha_browser_context)
 │       └── snapshots/       # gitignored — no baselines committed here (see below)
@@ -272,7 +275,92 @@ configuration needed.
 
 ---
 
-## Migrating from UIX's legacy `test/` setup
+## Testing
+
+The test suite has three tiers:
+
+### Tier 1 — Unit tests (no Docker required)
+
+These run in milliseconds and cover the Python logic of `HATestContainer`
+in isolation (URL construction, token handling, API path normalisation):
+
+```bash
+pip install -e ".[test]"                   # install once
+pytest tests/test_container_unit.py -v
+```
+
+Or via make:
+
+```bash
+make install
+make test
+```
+
+`make test` runs **all** non-browser tests, including both unit and
+integration tests, skipping the visual tier.
+
+### Tier 2 — Integration tests (Docker required)
+
+These start a real Home Assistant container and exercise the full lifecycle
+(onboarding, REST API, demo entities, Lovelace push):
+
+```bash
+# Prerequisites: Docker daemon running, HA image available
+pytest tests/test_container.py -v
+```
+
+The container is started once per pytest session (session-scoped fixture)
+and reused across all tests in the file.  Startup takes ~60 s the first time
+while HA initialises.
+
+Environment variables let you control which image and config directory are
+used:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `HA_VERSION` | `stable` | Image tag (`stable`, `beta`, `dev`, `2024.6.0`, …) |
+| `HA_CONFIG_PATH` | `ha-config/` | Host dir mounted as `/config` |
+| `HA_CUSTOM_COMPONENTS_PATH` | `custom_components/` | Host dir mounted as `/config/custom_components` |
+
+```bash
+HA_VERSION=beta pytest tests/test_container.py -v
+```
+
+### Tier 3 — Visual (Playwright) tests (Docker + Playwright required)
+
+```bash
+pip install -e ".[test]"
+playwright install chromium
+pytest tests/visual/ -v
+```
+
+Or via make:
+
+```bash
+make install
+make test-visual
+```
+
+Visual tests open a Chromium browser, log in to the running HA instance, and
+compare screenshots against committed baselines.  Baselines are stored in the
+**consumer's own repository** — see [Snapshot-based visual testing](#snapshot-based-visual-testing).
+
+### Version smoke tests (slow, optional)
+
+These pull the `stable`, `beta`, and `dev` images in sequence and verify that
+the container starts for each:
+
+```bash
+pytest tests/test_container.py -v -m version_smoke
+# or:
+make test-smoke
+```
+
+They are skipped by default to avoid pulling large images on every run.
+
+---
+
+
 
 UIX's `test/docker-compose.yaml` + `test/configuration.yaml` + `test/lovelace.yaml`
 are replaced by `make up` and UIX writing its own `tests/` using `HATestContainer`.
