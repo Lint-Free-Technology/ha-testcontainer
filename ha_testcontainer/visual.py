@@ -34,8 +34,10 @@ baselines in the consumer's project.
 from __future__ import annotations
 
 import inspect
+import json
 import os
 import shutil
+import time
 from pathlib import Path
 
 from playwright.sync_api import Page
@@ -73,24 +75,24 @@ def inject_ha_token(page: Page, ha_url: str, token: str) -> None:
     token:
         Long-lived access token obtained from :meth:`HATestContainer.get_token`.
     """
-    import time
-
-    page.goto(ha_url, wait_until="domcontentloaded", timeout=PAGE_LOAD_TIMEOUT)
     expires_ms = int(time.time() * 1000) + 365 * 24 * 3600 * 1000
-    page.evaluate(
-        """([url, tok, exp]) => {
-            localStorage.setItem('hassTokens', JSON.stringify({
-                access_token: tok,
-                token_type: 'Bearer',
-                expires_in: 31536000,
-                refresh_token: null,
-                hassUrl: url,
-                clientId: url + '/',
-                expires: exp
-            }));
-        }""",
-        [ha_url, token, expires_ms],
+    hass_tokens_json = json.dumps({
+        "access_token": token,
+        "token_type": "Bearer",
+        "expires_in": 31536000,
+        "refresh_token": None,
+        "hassUrl": ha_url,
+        "clientId": f"{ha_url}/",
+        "expires": expires_ms,
+    })
+    # Use add_init_script so the localStorage entry is written on every
+    # document load — including HA's own SPA redirects — before any page JS
+    # runs.  page.evaluate() after domcontentloaded is racy: HA's redirect
+    # destroys the execution context before evaluate() can run.
+    page.add_init_script(
+        f"localStorage.setItem('hassTokens', {json.dumps(hass_tokens_json)});"
     )
+    page.goto(ha_url, wait_until="domcontentloaded", timeout=PAGE_LOAD_TIMEOUT)
 
 
 # ---------------------------------------------------------------------------
