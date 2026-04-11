@@ -22,6 +22,7 @@ classifiers = [
 dependencies = [
     "testcontainers>=4.9",
     "requests>=2.32",
+    "websocket-client>=1.6",
 ]
 
 [project.optional-dependencies]

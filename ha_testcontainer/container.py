@@ -12,12 +12,15 @@ subclass that:
 
 from __future__ import annotations
 
+import json
+import threading
 import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
 import requests
+import websocket
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
@@ -196,6 +199,48 @@ class HATestContainer(DockerContainer):
         resp.raise_for_status()
         return resp.json()
 
+    def push_lovelace_config(self, config: dict[str, Any]) -> None:
+        """Push a Lovelace dashboard configuration via the WebSocket API.
+
+        ``POST /api/lovelace/config`` was removed from recent HA releases.
+        This method uses the ``lovelace/config/save`` WebSocket command
+        instead, which is the current supported approach.
+
+        The WebSocket call is executed in a dedicated thread with its own
+        event loop so this method is safe to call from inside
+        pytest-playwright's already-running asyncio event loop (where
+        :func:`asyncio.run` would raise a ``RuntimeError``).
+
+        Parameters
+        ----------
+        config:
+            Lovelace configuration dict to save, e.g.
+            ``{"title": "Home", "views": [...]}``.
+
+        Raises
+        ------
+        RuntimeError
+            If the WebSocket command fails or authentication is rejected.
+        """
+        result: dict[str, Any] = {}
+        exc_holder: list[BaseException] = []
+
+        def _run() -> None:
+            try:
+                result.update(self._ws_call({"id": 1, "type": "lovelace/config/save", "config": config}))
+            except BaseException as e:  # noqa: BLE001
+                exc_holder.append(e)
+
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+        t.join(timeout=30)
+        if t.is_alive():
+            raise TimeoutError("push_lovelace_config timed out after 30 s")
+        if exc_holder:
+            raise exc_holder[0]
+        if not result.get("success"):
+            raise RuntimeError(f"lovelace/config/save failed: {result}")
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -288,23 +333,23 @@ class HATestContainer(DockerContainer):
         # Step 3 – complete remaining onboarding steps (core_config, analytics,
         # integration).  These are optional from an API standpoint but HA marks
         # them as required before the UI proceeds.
-        for step in ("core_config", "analytics", "integration"):
+        for step in ("core_config", "analytics"):
             requests.post(
                 f"{base_url}/api/onboarding/{step}",
                 json={"client_id": client_id},
                 headers={"Authorization": f"Bearer {short_lived_token}"},
                 timeout=15,
             )
-
-        # Step 4 – mint a long-lived token so tests are not time-limited.
-        llt_resp = requests.post(
-            f"{base_url}/api/auth/long_lived_access_token",
-            json={"lifespan": 3650, "client_name": "ha-testcontainer"},
+        # The integration step requires redirect_uri in addition to client_id.
+        requests.post(
+            f"{base_url}/api/onboarding/integration",
+            json={"client_id": client_id, "redirect_uri": client_id},
             headers={"Authorization": f"Bearer {short_lived_token}"},
             timeout=15,
         )
-        llt_resp.raise_for_status()
-        self._token = llt_resp.json()["token"]
+
+        # Step 4 – mint a long-lived token so tests are not time-limited.
+        self._token = self._mint_long_lived_token(short_lived_token)
 
     def _password_login(self) -> str:
         """Authenticate with username/password and return a long-lived token.
@@ -354,11 +399,77 @@ class HATestContainer(DockerContainer):
         short_lived_token = token_resp.json()["access_token"]
 
         # Mint a long-lived token.
-        llt_resp = requests.post(
-            f"{base_url}/api/auth/long_lived_access_token",
-            json={"lifespan": 3650, "client_name": "ha-testcontainer"},
-            headers={"Authorization": f"Bearer {short_lived_token}"},
-            timeout=15,
-        )
-        llt_resp.raise_for_status()
-        return llt_resp.json()["token"]
+        return self._mint_long_lived_token(short_lived_token)
+
+    def _ws_call(self, command: dict[str, Any]) -> dict[str, Any]:
+        """Open an authenticated WebSocket connection, send *command*, return result.
+
+        The ``"id"`` field in *command* is used as the expected message ID in
+        the response.  Caller is responsible for setting a unique ID.
+
+        Parameters
+        ----------
+        command:
+            A dict representing the WebSocket command.  Must include ``"id"``
+            and ``"type"`` keys.
+
+        Returns
+        -------
+        dict
+            The parsed result message from Home Assistant.
+
+        Raises
+        ------
+        RuntimeError
+            If authentication fails.
+        """
+        ws_url = self.get_url().replace("http://", "ws://") + "/api/websocket"
+        ws = websocket.create_connection(ws_url, timeout=15)
+        try:
+            ws.recv()  # auth_required
+            ws.send(json.dumps({"type": "auth", "access_token": self.get_token()}))
+            auth_result = json.loads(ws.recv())
+            if auth_result.get("type") != "auth_ok":
+                raise RuntimeError(f"WebSocket auth failed: {auth_result}")
+            ws.send(json.dumps(command))
+            return json.loads(ws.recv())
+        finally:
+            ws.close()
+
+    def _mint_long_lived_token(self, short_lived_token: str) -> str:
+        """Create a long-lived access token via the HA WebSocket API.
+
+        The legacy ``POST /api/auth/long_lived_access_token`` endpoint was
+        removed in recent HA stable releases.  The WebSocket flow is:
+
+        1. Authenticate with the short-lived token.
+        2. Send an ``auth/long_lived_access_token`` command.
+        3. Return the resulting token string.
+        """
+        ws_url = self.get_url().replace("http://", "ws://") + "/api/websocket"
+        ws = websocket.create_connection(ws_url, timeout=15)
+        try:
+            # Server sends auth_required immediately after connect.
+            ws.recv()
+            # Authenticate with the short-lived token.
+            ws.send(json.dumps({"type": "auth", "access_token": short_lived_token}))
+            auth_result = json.loads(ws.recv())
+            if auth_result.get("type") != "auth_ok":
+                raise RuntimeError(f"WebSocket auth failed: {auth_result}")
+            # Request a long-lived token.
+            ws.send(
+                json.dumps(
+                    {
+                        "id": 1,
+                        "type": "auth/long_lived_access_token",
+                        "client_name": "ha-testcontainer",
+                        "lifespan": 3650,
+                    }
+                )
+            )
+            result = json.loads(ws.recv())
+            if not result.get("success"):
+                raise RuntimeError(f"Failed to create long-lived token: {result}")
+            return result["result"]
+        finally:
+            ws.close()

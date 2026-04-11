@@ -165,3 +165,69 @@ class TestApi:
             mock_req.return_value = MagicMock()
             self.container.api("POST", "lovelace/config", json={"title": "Test"})
             assert mock_req.call_args[1]["json"] == {"title": "Test"}
+
+
+# ---------------------------------------------------------------------------
+# push_lovelace_config()
+# ---------------------------------------------------------------------------
+
+
+class TestPushLovelaceConfig:
+    """push_lovelace_config() sends lovelace/config/save via WebSocket."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, container: HATestContainer):
+        container._token = "test-token"  # noqa: SLF001
+        container.get_url = MagicMock(return_value="http://localhost:8123")
+        self.container = container
+
+    def _make_ws_mock(self, result_payload: dict) -> MagicMock:
+        """Return a mock websocket that replays the HA auth handshake."""
+        ws = MagicMock()
+        ws.recv.side_effect = [
+            '{"type": "auth_required"}',
+            '{"type": "auth_ok"}',
+            __import__("json").dumps(result_payload),
+        ]
+        return ws
+
+    def test_success(self):
+        """A successful save resolves without error."""
+        ws_mock = self._make_ws_mock({"id": 1, "type": "result", "success": True, "result": None})
+        with patch("ha_testcontainer.container.websocket.create_connection", return_value=ws_mock):
+            self.container.push_lovelace_config({"title": "Dashboard", "views": []})
+        ws_mock.close.assert_called_once()
+
+    def test_sends_correct_command(self):
+        """The lovelace/config/save command is sent with the config payload."""
+        import json as _json
+        config = {"title": "My Board", "views": [{"path": "default"}]}
+        ws_mock = self._make_ws_mock({"id": 1, "type": "result", "success": True, "result": None})
+        with patch("ha_testcontainer.container.websocket.create_connection", return_value=ws_mock):
+            self.container.push_lovelace_config(config)
+        # The third send() call carries the command (after auth_required recv + auth send).
+        sent_calls = ws_mock.send.call_args_list
+        # First send is auth, second is the command.
+        command = _json.loads(sent_calls[1][0][0])
+        assert command["type"] == "lovelace/config/save"
+        assert command["config"] == config
+
+    def test_raises_on_failure(self):
+        """RuntimeError is raised when the WebSocket result reports failure."""
+        ws_mock = self._make_ws_mock(
+            {"id": 1, "type": "result", "success": False, "error": {"code": "unknown_error", "message": "oops"}}
+        )
+        with patch("ha_testcontainer.container.websocket.create_connection", return_value=ws_mock):
+            with pytest.raises(RuntimeError, match="lovelace/config/save failed"):
+                self.container.push_lovelace_config({"title": "Bad"})
+
+    def test_raises_on_auth_failure(self):
+        """RuntimeError is raised when WebSocket authentication is rejected."""
+        ws = MagicMock()
+        ws.recv.side_effect = [
+            '{"type": "auth_required"}',
+            '{"type": "auth_invalid"}',
+        ]
+        with patch("ha_testcontainer.container.websocket.create_connection", return_value=ws):
+            with pytest.raises(RuntimeError, match="WebSocket auth failed"):
+                self.container.push_lovelace_config({"title": "Bad"})
