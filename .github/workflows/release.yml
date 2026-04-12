@@ -34,7 +34,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload release artifacts to GitHub Release
-        uses: python-semantic-release/upload-to-gh-release@v9.21.1
+        uses: python-semantic-release/upload-to-gh-release@v9
         if: steps.release.outputs.released == 'true'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
