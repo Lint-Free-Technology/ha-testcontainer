@@ -22,7 +22,7 @@ from urllib.parse import urlencode
 import requests
 import websocket
 from testcontainers.core.container import DockerContainer
-from testcontainers.core.waiting_utils import wait_for_logs
+from testcontainers.core.wait_strategies import LogMessageWaitStrategy
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -250,7 +250,7 @@ class HATestContainer(DockerContainer):
         # First wait for the "Home Assistant is running" log line so we know
         # the internal startup sequence is complete.
         try:
-            wait_for_logs(self, "Home Assistant is running", timeout=STARTUP_TIMEOUT)
+            LogMessageWaitStrategy("Home Assistant is running").with_startup_timeout(STARTUP_TIMEOUT).wait_until_ready(self)
         except Exception:  # noqa: BLE001
             pass  # fall through to the HTTP poll below
 
