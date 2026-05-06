@@ -20,6 +20,7 @@
 | `ha-config/uix_test_foundries_anchors.yaml` | `tests/ha-config/uix_test_foundries_anchors.yaml` | Demonstrates YAML anchor pattern in foundry files |
 | `ha-config/uix/test_forge_style.yaml` | `tests/ha-config/uix/test_forge_style.yaml` | Included by forge style scenarios |
 | `ha-config/uix/test_tile_container.yaml` | `tests/ha-config/uix/test_tile_container.yaml` | Included by forge style scenarios |
+| `ha-config/www/media/LICENSES.md` | `tests/ha-config/www/media/LICENSES.md` | License attributions for UIX test media assets (photos/videos) |
 | `plugins.yaml` | merged into `tests/plugins.yaml` | UIX-specific Lovelace plugin registry |
 
 ---
@@ -50,6 +51,10 @@ cp ../ha-testcontainer/ha-tests/uix/ha-config/uix_test_foundries.yaml         te
 cp ../ha-testcontainer/ha-tests/uix/ha-config/uix_test_foundries_anchors.yaml tests/ha-config/uix_test_foundries_anchors.yaml
 cp ../ha-testcontainer/ha-tests/uix/ha-config/uix/test_forge_style.yaml    tests/ha-config/uix/test_forge_style.yaml
 cp ../ha-testcontainer/ha-tests/uix/ha-config/uix/test_tile_container.yaml tests/ha-config/uix/test_tile_container.yaml
+
+# UIX media assets and their license file
+cp ../ha-testcontainer/ha-tests/uix/ha-config/www/media/LICENSES.md tests/ha-config/www/media/LICENSES.md
+# (copy daniel_craig_cropped.jpg, sydney_ferry.mp4, kitchen.jpg etc. from the UIX repo's own history)
 
 # UIX plugin registry
 cp ../ha-testcontainer/ha-tests/uix/plugins.yaml tests/plugins.yaml
