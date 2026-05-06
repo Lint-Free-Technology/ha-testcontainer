@@ -1,0 +1,4 @@
+# Placeholder — add your scenario YAML files here.
+# Each .yaml file defines one visual test scenario that is automatically
+# discovered by test_scenarios.py and test_doc_images.py.
+# See ha-tests/README.md for the scenario schema.

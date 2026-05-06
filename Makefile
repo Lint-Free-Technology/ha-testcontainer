@@ -1,4 +1,4 @@
-.PHONY: setup fetch-plugin list-releases list-plugin-releases install test test-visual test-smoke update-snapshots up down clean
+.PHONY: setup fetch-plugin list-releases list-plugin-releases install test test-visual test-smoke update-snapshots up down clean ha-tests ha-tests-visual ha-tests-update-snapshots ha-tests-doc-audit ha-tests-up
 
 PYTHON ?= python3
 
