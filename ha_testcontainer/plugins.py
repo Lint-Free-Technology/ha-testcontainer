@@ -1,16 +1,17 @@
-"""Download third-party Lovelace plugins for the HA test instance.
+"""Download or copy Lovelace plugins for the HA test instance.
 
-This module is responsible for fetching the **latest** release of each
-third-party Lovelace plugin from GitHub and writing the JS file(s) into the
-``www/`` directory that will be served at ``/local/`` by the HA test container.
+This module is responsible for making each Lovelace plugin available in the
+``www/`` directory that will be served at ``/local/`` by the HA test container,
+and for registering those resources in ``lovelace_resources.yaml`` so that
+Home Assistant loads them automatically at start-up.
 
 It is called by both ``conftest.py`` (pytest session) and ``ha_server.py``
 (persistent dev server) immediately after the static ``ha-config/`` tree is
 copied into a temporary directory, before the HA Docker container starts.
 
-Adding a new plugin
--------------------
-Add an entry to ``ha-tests/plugins.yaml``.  Each entry is a mapping with:
+Adding a hosted (GitHub-released) plugin
+-----------------------------------------
+Add an entry to your ``plugins.yaml`` with:
 
 ``repo``
     GitHub repository in ``owner/name`` format.
@@ -22,11 +23,30 @@ Add an entry to ``ha-tests/plugins.yaml``.  Each entry is a mapping with:
     3. As a raw file inside the ``dist/`` sub-directory for the release tag.
 ``filename``
     Filename to write inside *www_dir* (usually the same as ``asset``).
+
+Adding a local plugin (your own dashboard plugin under development)
+--------------------------------------------------------------------
+Option A — ``local_path`` entry in ``plugins.yaml``:
+
+.. code-block:: yaml
+
+    - local_path: ../dist/my-plugin.js   # relative to the yaml file or absolute
+      filename: my-plugin.js
+
+The file is copied directly into *www_dir* without any network request.
+
+Option B — ``HA_LOCAL_PLUGINS_DIR`` environment variable (or the
+*local_plugins_dir* parameter of :func:`download_lovelace_plugins`):
+
+    Point ``HA_LOCAL_PLUGINS_DIR`` at a directory that contains ``.js``
+    files.  Every ``*.js`` file found there is copied into *www_dir* and
+    registered as a Lovelace resource.
 """
 
 from __future__ import annotations
 
 import os
+import shutil
 import urllib.parse
 from pathlib import Path
 from typing import Any
@@ -88,19 +108,32 @@ def _github_headers() -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-def download_lovelace_plugins(www_dir: Path, *, plugins_yaml: Path | None = None) -> None:
-    """Download the latest release of each registered plugin into *www_dir*.
+def download_lovelace_plugins(
+    www_dir: Path,
+    *,
+    plugins_yaml: Path | None = None,
+    local_plugins_dir: Path | None = None,
+) -> None:
+    """Download or copy each registered plugin into *www_dir*.
 
     The plugin list is read from *plugins_yaml* (defaults to
     ``ha-tests/plugins.yaml`` in the same directory as this module).  Pass an
     explicit path to use a component-specific registry instead — for example
     ``ha-tests/uix/plugins.yaml`` for UIX tests.
 
+    In addition to hosted (GitHub-released) plugins, the yaml file may contain
+    entries with a ``local_path`` key that point to a JS file on disk.  Relative
+    paths are resolved relative to the directory containing *plugins_yaml*.
+
+    Extra local plugins can also be supplied via *local_plugins_dir*: every
+    ``*.js`` file found at the top level of that directory is copied into
+    *www_dir* and registered as a Lovelace resource.
+
     Creates *www_dir* if it does not exist.  Files are always overwritten so
     the latest version is guaranteed on every fresh container startup.
 
     Also writes ``lovelace_resources.yaml`` in the parent directory (the HA
-    config root) so that Home Assistant registers the downloaded JS files as
+    config root) so that Home Assistant registers the plugin JS files as
     Lovelace resources at startup — no WebSocket API calls required.
 
     Parameters
@@ -111,12 +144,26 @@ def download_lovelace_plugins(www_dir: Path, *, plugins_yaml: Path | None = None
     plugins_yaml:
         Override the default ``plugins.yaml`` path.  When ``None``, uses
         the ``plugins.yaml`` file next to this module.
+    local_plugins_dir:
+        Optional directory whose ``*.js`` files are copied into *www_dir*
+        and registered as Lovelace resources.  Corresponds to the
+        ``HA_LOCAL_PLUGINS_DIR`` environment variable.
     """
     www_dir.mkdir(parents=True, exist_ok=True)
     plugins = _load_plugins(plugins_yaml)
+
+    yaml_dir = plugins_yaml.parent if plugins_yaml is not None else None
     for plugin in plugins:
-        _download_plugin(www_dir, plugin)
-    _write_lovelace_resources(www_dir.parent, plugins)
+        if "local_path" in plugin:
+            _copy_local_plugin(www_dir, plugin, yaml_dir)
+        else:
+            _download_plugin(www_dir, plugin)
+
+    dir_entries: list[dict[str, str]] = []
+    if local_plugins_dir is not None:
+        dir_entries = _copy_dir_plugins(www_dir, local_plugins_dir)
+
+    _write_lovelace_resources(www_dir.parent, plugins + dir_entries)
 
 
 # ---------------------------------------------------------------------------
@@ -238,3 +285,43 @@ def _stream_download(url: str, dest: Path) -> None:
     with dest.open("wb") as fh:
         for chunk in resp.iter_content(chunk_size=65536):
             fh.write(chunk)
+
+
+def _copy_local_plugin(
+    www_dir: Path,
+    plugin: dict[str, str],
+    yaml_dir: Path | None,
+) -> None:
+    """Copy the local JS file referenced by *plugin* into *www_dir*.
+
+    ``plugin["local_path"]`` may be absolute or relative; relative paths are
+    resolved against *yaml_dir* (the directory containing ``plugins.yaml``).
+    """
+    local_path = Path(plugin["local_path"])
+    if not local_path.is_absolute() and yaml_dir is not None:
+        local_path = yaml_dir / local_path
+    local_path = local_path.resolve()
+    if not local_path.is_file():
+        raise FileNotFoundError(
+            f"Local plugin file not found: {local_path} "
+            f"(specified as local_path={plugin['local_path']!r})"
+        )
+    filename = plugin["filename"]
+    dest = www_dir / filename
+    shutil.copy2(local_path, dest)
+    print(f"[plugins] Copied local plugin {local_path} → {dest}", flush=True)
+
+
+def _copy_dir_plugins(www_dir: Path, local_plugins_dir: Path) -> list[dict[str, str]]:
+    """Copy every ``*.js`` file in *local_plugins_dir* into *www_dir*.
+
+    Returns a list of plugin dicts (``{"filename": ...}``) suitable for
+    inclusion in ``lovelace_resources.yaml``.
+    """
+    entries: list[dict[str, str]] = []
+    for js_file in sorted(local_plugins_dir.glob("*.js")):
+        dest = www_dir / js_file.name
+        shutil.copy2(js_file, dest)
+        print(f"[plugins] Copied local plugin {js_file} → {dest}", flush=True)
+        entries.append({"filename": js_file.name})
+    return entries
