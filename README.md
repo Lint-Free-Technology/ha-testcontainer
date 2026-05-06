@@ -175,7 +175,11 @@ Run `SNAPSHOT_UPDATE=1 pytest tests/visual/` to create or update baselines.
 The scenario runner (`ha_testcontainer.visual.scenario_runner`) lets you write
 visual tests as plain YAML files — no Python code required.  Configure it in
 your `conftest.py` and it automatically picks up all `*.yaml` files in your
-scenarios directory:
+scenarios directory.
+
+> **See also: [Writing Scenarios guide](README_SCENARIOS.md)** — best practices
+> for setting entity states, structuring test cards, and keeping the test
+> environment isolated from any locally-running Home Assistant instance.
 
 ```python
 # tests/conftest.py
