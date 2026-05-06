@@ -26,6 +26,9 @@ playwright-report/
 # tests/visual/snapshots/ but none of them should ever be committed.
 tests/visual/snapshots/*.png
 
+# ha-tests snapshot actuals are also transient.
+ha-tests/visual/snapshots/*.actual.png
+
 # Downloaded custom components (fetched by scripts/fetch_component.py)
 # Each component is a sub-directory; exclude all of them, keep only the README.
 custom_components/*/

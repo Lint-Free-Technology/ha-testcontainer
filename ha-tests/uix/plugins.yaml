@@ -1,0 +1,17 @@
+# Third-party Lovelace plugins required by UIX test scenarios.
+#
+# Use this instead of (or in addition to) ha-tests/plugins.yaml when running
+# UIX tests.  Set LOVELACE_PLUGINS_YAML=ha-tests/uix/plugins.yaml or copy
+# these entries into your own plugins.yaml.
+
+- repo: Lint-Free-Technology/lovelace-auto-entities
+  asset: auto-entities.js
+  filename: auto-entities.js
+
+- repo: Nerwyn/custom-card-features
+  asset: custom-card-features.min.js
+  filename: custom-card-features.min.js
+
+- repo: selvalt7/badge-horizontal-container-card
+  asset: badge-horizontal-container-card.js
+  filename: badge-horizontal-container-card.js

@@ -1,0 +1,4 @@
+# HA theme definitions for the test container.
+# Add component-specific themes here, or use LOVELACE_EXTRA_CONFIG_DIR
+# to inject themes from a separate directory at container startup.
+{}

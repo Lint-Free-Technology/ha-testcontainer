@@ -1,0 +1,14 @@
+# Third-party Lovelace plugins to download on every HA instance startup.
+#
+# Each entry requires:
+#   repo     - GitHub repository in "owner/name" format
+#   asset    - name of the JS asset to download from the latest release
+#   filename - filename to write inside www/ (usually the same as `asset`)
+#
+# Resolution order: release asset → repo root → dist/ folder.
+#
+# This list is intentionally empty so that ha-tests works for any component
+# out of the box.  Add the plugins required by your component here, or
+# point LOVELACE_PLUGINS_YAML at your own plugins.yaml (e.g.
+# ha-tests/uix/plugins.yaml for UIX tests).
+[]

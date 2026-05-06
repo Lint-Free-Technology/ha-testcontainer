@@ -1,4 +1,4 @@
-.PHONY: setup fetch-plugin list-releases list-plugin-releases install test test-visual test-smoke update-snapshots up down clean
+.PHONY: setup fetch-plugin list-releases list-plugin-releases install test test-visual test-smoke update-snapshots up down clean ha-tests ha-tests-visual ha-tests-update-snapshots ha-tests-doc-audit ha-tests-up
 
 PYTHON ?= python3
 
@@ -9,13 +9,21 @@ PYTHON ?= python3
 #         make setup COMPONENT=owner/repo VERSION=5.3.1
 COMPONENT ?=
 
+# Optional overrides for ha-tests targets (consumers pass these in):
+#   LOVELACE_SETUP_INTEGRATION — integration domain to auto-configure (e.g. uix)
+#   LOVELACE_EXTRA_CONFIG_DIR  — component-specific ha-config additions to merge
+#   LOVELACE_PLUGINS_YAML      — alternative plugins.yaml (e.g. ha-tests/uix/plugins.yaml)
+LOVELACE_SETUP_INTEGRATION ?=
+LOVELACE_EXTRA_CONFIG_DIR ?=
+LOVELACE_PLUGINS_YAML ?=
+
 # ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
 
 ## Fetch the latest release of COMPONENT into custom_components/
 ## Usage:  make setup COMPONENT=owner/repo
-##         make setup COMPONENT=owner/repo VERSION=5.3.1
+##         make setup COMPONENT=owner/repo VERSION=x.y.z
 setup:
 ifeq ($(COMPONENT),)
 	$(error COMPONENT is required. Usage: make setup COMPONENT=owner/repo [VERSION=x.y.z])
@@ -44,7 +52,7 @@ install:
 	playwright install chromium
 
 # ---------------------------------------------------------------------------
-# Tests
+# Tests (ha-testcontainer's own unit/smoke tests)
 # ---------------------------------------------------------------------------
 
 ## Run all unit/integration tests (no browser)
@@ -62,6 +70,43 @@ test-smoke:
 ## Refresh all visual baselines (overwrite existing PNGs)
 update-snapshots:
 	SNAPSHOT_UPDATE=1 pytest tests/visual/ -v
+
+# ---------------------------------------------------------------------------
+# ha-tests — portable Lovelace/visual test suite
+# ---------------------------------------------------------------------------
+# These targets run the ha-tests/ suite.  Consumers can pass Make variables
+# to customise the environment (see top of Makefile for variable docs).
+#
+# UIX example:
+#   make ha-tests-up \
+#     LOVELACE_SETUP_INTEGRATION=uix \
+#     LOVELACE_EXTRA_CONFIG_DIR=ha-tests/uix/ha-config \
+#     LOVELACE_PLUGINS_YAML=ha-tests/uix/plugins.yaml
+
+_HA_TESTS_ENV = \
+  $(if $(LOVELACE_SETUP_INTEGRATION),LOVELACE_SETUP_INTEGRATION=$(LOVELACE_SETUP_INTEGRATION)) \
+  $(if $(LOVELACE_EXTRA_CONFIG_DIR),LOVELACE_EXTRA_CONFIG_DIR=$(LOVELACE_EXTRA_CONFIG_DIR)) \
+  $(if $(LOVELACE_PLUGINS_YAML),LOVELACE_PLUGINS_YAML=$(LOVELACE_PLUGINS_YAML))
+
+## Run non-visual ha-tests (doc audit, import checks)
+ha-tests:
+	$(_HA_TESTS_ENV) pytest ha-tests/ --ignore=ha-tests/visual -v
+
+## Run visual (Playwright) ha-tests
+ha-tests-visual:
+	$(_HA_TESTS_ENV) pytest ha-tests/visual/ -v
+
+## Refresh all ha-tests snapshot baselines
+ha-tests-update-snapshots:
+	$(_HA_TESTS_ENV) SNAPSHOT_UPDATE=1 pytest ha-tests/visual/ -v
+
+## Run doc-image audit (set DOCS_SOURCE_DIR to point at your docs)
+ha-tests-doc-audit:
+	$(_HA_TESTS_ENV) pytest ha-tests/test_doc_audit.py -v
+
+## Start a persistent HA container for fast iterative ha-tests development
+ha-tests-up:
+	$(_HA_TESTS_ENV) $(PYTHON) ha-tests/ha_server.py
 
 # ---------------------------------------------------------------------------
 # Local dev server
@@ -85,3 +130,4 @@ clean:
 	find ha-config/www/dashboard -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} + 2>/dev/null || true
 	rm -rf .pytest_cache __pycache__ tests/__pycache__ tests/visual/__pycache__
 	find tests/visual/snapshots -name "*.actual.png" -delete
+	find ha-tests/visual/snapshots -name "*.actual.png" -delete 2>/dev/null || true

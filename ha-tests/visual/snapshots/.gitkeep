@@ -1,0 +1,3 @@
+# Snapshot baselines are stored here alongside their test files.
+# actual.png files (e.g. my_card.actual.png) are gitignored — only
+# the baseline PNGs (e.g. my_card.png) should be committed.
