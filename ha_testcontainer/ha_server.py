@@ -45,6 +45,10 @@ HA_EXTRA_CONFIG_DIR
 HA_PLUGINS_YAML
     Path to a ``plugins.yaml`` file listing Lovelace plugins to download.
     When unset no plugins are downloaded.
+HA_LOCAL_PLUGINS_DIR
+    Path to a directory containing local ``.js`` plugin files to copy into
+    ``www/`` and register as Lovelace resources.  Use this to serve your own
+    dashboard plugin from the local repository without publishing a release.
 """
 
 from __future__ import annotations
@@ -99,9 +103,11 @@ def main() -> None:
             shutil.copytree(str(extra_config), str(ha_tmp), dirs_exist_ok=True)
 
     plugins_yaml_env = os.environ.get("HA_PLUGINS_YAML", "").strip()
+    local_plugins_dir_env = os.environ.get("HA_LOCAL_PLUGINS_DIR", "").strip()
     download_lovelace_plugins(
         ha_tmp / "www",
         plugins_yaml=Path(plugins_yaml_env) if plugins_yaml_env else None,
+        local_plugins_dir=Path(local_plugins_dir_env) if local_plugins_dir_env else None,
     )
 
     container = HATestContainer(
