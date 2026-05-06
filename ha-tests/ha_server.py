@@ -79,8 +79,19 @@ def main() -> None:
     ha_tmp = Path(tempfile.mkdtemp(prefix="ha-tests-state-"))
     shutil.copytree(str(_HA_CONFIG_DIR), str(ha_tmp), dirs_exist_ok=True)
 
+    # Merge component-specific config additions on top (LOVELACE_EXTRA_CONFIG_DIR).
+    extra_config_env = os.environ.get("LOVELACE_EXTRA_CONFIG_DIR", "").strip()
+    if extra_config_env:
+        extra_config = Path(extra_config_env)
+        if extra_config.exists():
+            shutil.copytree(str(extra_config), str(ha_tmp), dirs_exist_ok=True)
+
     from plugins import download_lovelace_plugins
-    download_lovelace_plugins(ha_tmp / "www")
+    plugins_yaml_env = os.environ.get("LOVELACE_PLUGINS_YAML", "").strip()
+    download_lovelace_plugins(
+        ha_tmp / "www",
+        plugins_yaml=Path(plugins_yaml_env) if plugins_yaml_env else None,
+    )
 
     container = HATestContainer(
         version=ha_version,

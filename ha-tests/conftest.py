@@ -138,9 +138,9 @@ def ha(ha_version: str, tmp_path_factory):
 
     **Fast-iteration mode**: when ``HA_URL`` *and* ``HA_TOKEN`` are set in the
     environment, the fixture skips Docker entirely and connects to a
-    pre-running instance.  Use ``make lovelace-ha-up`` (or
-    ``python lovelace-tests/ha_server.py``) in a separate terminal to start
-    the persistent instance; source the printed ``export`` lines before running
+    pre-running instance.  Use ``make ha-tests-up`` (or
+    ``python ha-tests/ha_server.py``) in a separate terminal to start the
+    persistent instance; source the printed ``export`` lines before running
     pytest::
 
         # Terminal 1
@@ -155,6 +155,22 @@ def ha(ha_version: str, tmp_path_factory):
     Set ``LOVELACE_SETUP_INTEGRATION=<domain>`` to trigger automatic config-
     flow setup for a component (e.g. ``LOVELACE_SETUP_INTEGRATION=uix``).
     Leave unset or empty to skip automatic setup.
+
+    Extra config
+    ------------
+    ``LOVELACE_EXTRA_CONFIG_DIR`` — path to a directory whose contents are
+    copied on top of ``ha-tests/ha-config/`` before the container starts.
+    Use this to inject component-specific themes, foundry YAML files, entity
+    fixtures, etc. without modifying the generic base config::
+
+        LOVELACE_EXTRA_CONFIG_DIR=ha-tests/uix/ha-config pytest ha-tests/visual/ -v
+
+    Plugin registry
+    ---------------
+    ``LOVELACE_PLUGINS_YAML`` — path to an alternative ``plugins.yaml``.
+    When set, this file is used **instead of** ``ha-tests/plugins.yaml``::
+
+        LOVELACE_PLUGINS_YAML=ha-tests/uix/plugins.yaml pytest ha-tests/visual/ -v
     """
     ha_url_env = os.environ.get("HA_URL")
     ha_token_env = os.environ.get("HA_TOKEN")
@@ -165,11 +181,20 @@ def ha(ha_version: str, tmp_path_factory):
     # ---- Normal Docker-container mode ----
 
     # Create an isolated temp dir for this test session's HA state.
-    # Copy all static ha-config files (configuration.yaml etc.) into it
-    # so the source tree is never polluted by HA's runtime writes.
+    # 1. Copy the generic base ha-config.
     ha_tmp = tmp_path_factory.mktemp("ha-state")
     shutil.copytree(str(HA_CONFIG_DIR), str(ha_tmp), dirs_exist_ok=True)
-    download_lovelace_plugins(ha_tmp / "www")
+
+    # 2. Merge any component-specific config on top (LOVELACE_EXTRA_CONFIG_DIR).
+    extra_config_env = os.environ.get("LOVELACE_EXTRA_CONFIG_DIR", "").strip()
+    if extra_config_env:
+        extra_config = Path(extra_config_env)
+        if extra_config.exists():
+            shutil.copytree(str(extra_config), str(ha_tmp), dirs_exist_ok=True)
+
+    # 3. Download Lovelace plugins (respects LOVELACE_PLUGINS_YAML override).
+    plugins_yaml_env = os.environ.get("LOVELACE_PLUGINS_YAML", "").strip()
+    download_lovelace_plugins(ha_tmp / "www", plugins_yaml=Path(plugins_yaml_env) if plugins_yaml_env else None)
 
     container = HATestContainer(
         version=ha_version,

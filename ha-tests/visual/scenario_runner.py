@@ -33,17 +33,15 @@ any other action that must happen before assertions and snapshots.
 
 A ``setup:`` key (same structure as ``interactions:``) may also be declared.
 Setup interactions run **before** page navigation and are intended for
-``ha_service``, ``add_foundry``, and other state-preparation calls that must
-complete before the page first loads.  Only ``ha_service``,
-``device_registry_update``, ``add_foundry``, ``delete_foundry``, and ``wait``
-are meaningful in a ``setup`` block.
+``ha_service`` and other state-preparation calls that must complete before the
+page first loads.  Only ``ha_service``, ``device_registry_update``, and
+``wait`` (plus any registered extension types) are meaningful in a ``setup``
+block.
 
 A ``teardown:`` key (same structure as ``interactions:``) may optionally be
 declared.  Teardown interactions run **after** all assertions and doc-image
 captures, inside the ``finally`` block, so they execute even when the test
-fails.  Use ``teardown:`` to delete foundries or undo other persistent state
-changes made in ``setup:``.  Only ``ha_service``, ``add_foundry``,
-``delete_foundry``, and ``wait`` are meaningful in a ``teardown`` block.
+fails.
 
 hover
     Hover over an element using one of two forms:
@@ -55,7 +53,7 @@ hover
 
         interactions:
           - type: hover
-            selector: uix-forge
+            selector: my-card
             settle_ms: 800   # optional, default 500
 
     *Shadow-root* — hover an element inside a shadow-root chain (uses JS to
@@ -83,7 +81,7 @@ hover_away
 click
     Click an element.  Supports the same simple / shadow-root forms as
     ``hover``.  Use ``settle_ms`` to wait for state changes or animations
-    after the click (e.g. entity state update + UIX template re-render):
+    after the click:
 
     .. code-block:: yaml
 
@@ -126,84 +124,12 @@ device_registry_update
             entity_id: light.bed_light   # OR device_id: abc123
             area_name: Bedroom           # OR area_id: bedroom
 
-add_foundry
-    Create or update a named UIX foundry via the WebSocket API.  The foundry
-    is persisted in the UIX config entry so it is immediately available to any
-    ``uix-forge`` card that references it by name.  Use in ``setup:`` to
-    register a foundry before the page loads.  Pair with ``delete_foundry``
-    in ``teardown:`` to remove it afterwards.  Requires the ``ha`` container.
-
-    .. code-block:: yaml
-
-        setup:
-          - type: add_foundry
-            name: my-tile-foundry
-            config:
-              forge:
-                mold: card
-              element:
-                type: tile
-                entity: light.bed_light
-
-delete_foundry
-    Delete a named UIX foundry via the WebSocket API.  Raises an error if the
-    foundry does not exist.  Use in ``teardown:`` to clean up foundries added
-    by ``add_foundry`` so they do not persist across tests.  Requires the
-    ``ha`` container.
-
-    .. code-block:: yaml
-
-        teardown:
-          - type: delete_foundry
-            name: my-tile-foundry
-
-add_foundry_file
-    Register a foundry YAML file with UIX via the ``uix/add_foundry_file``
-    WebSocket API.  The file must already exist in the HA config directory.
-    Use in ``setup:`` so that file-based foundries are available before the
-    page loads.  Pair with ``remove_foundry_file`` in ``teardown:`` to
-    deregister the file afterwards.  Requires the ``ha`` container.
-
-    The YAML file must have a top-level ``uix_foundries`` key that is a
-    mapping of foundry names to their configurations.
-
-    .. code-block:: yaml
-
-        setup:
-          - type: add_foundry_file
-            file_path: uix_test_foundries.yaml
-
-remove_foundry_file
-    Deregister a foundry YAML file from UIX via the
-    ``uix/remove_foundry_file`` WebSocket API.  The file itself is not
-    deleted.  Use in ``teardown:`` to clean up a file path added by
-    ``add_foundry_file``.  Requires the ``ha`` container.
-
-    .. code-block:: yaml
-
-        teardown:
-          - type: remove_foundry_file
-            file_path: uix_test_foundries.yaml
-
-reload_foundry_files
-    Trigger a re-read of all registered foundry files via the
-    ``uix/reload_foundry_files`` WebSocket API.  Fires the
-    foundries-updated event so all connected clients receive the latest
-    file contents.  Useful when file content changes between setup steps.
-    Requires the ``ha`` container.
-
-    .. code-block:: yaml
-
-        setup:
-          - type: reload_foundry_files
-
 dispatch_window_event
     Dispatch a ``CustomEvent`` on ``window`` from inside the browser.
-    Useful for simulating browser-level events such as ``config-refresh``
-    (fired by the HA YAML-mode dashboard refresh button).  ``settle_ms``
-    (default 1000) is the number of milliseconds to wait after dispatching
-    so that any async reactions (e.g. a ``fetchFoundries`` round-trip) can
-    complete before the next interaction or assertion runs.
+    Useful for simulating browser-level events such as ``config-refresh``.
+    ``settle_ms`` (default 1000) is the number of milliseconds to wait after
+    dispatching so that any async reactions can complete before the next
+    interaction or assertion runs.
 
     .. code-block:: yaml
 
@@ -215,33 +141,24 @@ dispatch_window_event
 write_config_file
     Write (or overwrite) a file inside the HA config directory.  The file
     is written directly into the running container so that subsequent
-    ``dispatch_window_event: config-refresh`` interactions (or any other
-    reload trigger) cause UIX to read the new contents.  Useful for
-    testing that foundry files are genuinely re-read from disk rather than
-    served from a cache.
+    ``dispatch_window_event`` interactions or any other reload trigger can
+    pick up the new contents.
 
     ``path`` is a path relative to the HA config root (``/config/``).
     ``content`` is the UTF-8 text to write.
 
-    In **Docker mode** (default CI and ``make ha_up``) the file is written
-    into the running container via the Docker ``put_archive`` API.  In
-    **external mode** (``HA_URL``/``HA_TOKEN`` env vars) the
-    ``HA_CONFIG_DIR`` env var must point to the config directory on the
-    host.
+    In **Docker mode** (default CI and ``make ha-tests-up``) the file is
+    written into the running container via the Docker ``put_archive`` API.
+    In **external mode** (``HA_URL``/``HA_TOKEN`` env vars) the
+    ``HA_CONFIG_DIR`` env var must point to the config directory on the host.
 
     .. code-block:: yaml
 
         interactions:
           - type: write_config_file
-            path: uix_test_foundries.yaml
+            path: my_config.yaml
             content: |
-              uix_foundries:
-                my-foundry:
-                  forge:
-                    mold: card
-                  element:
-                    type: tile
-                    entity: "light.bed_light"
+              my_key: my_value
 
 wait
     Wait for a fixed number of milliseconds (default 500):
@@ -251,6 +168,12 @@ wait
         interactions:
           - type: wait
             ms: 1000
+
+Custom interaction types
+    Register your own interaction types with :func:`register_interaction_type`.
+    For example, the UIX extension module (``ha-tests/uix/extensions.py``)
+    registers ``add_foundry``, ``delete_foundry``, ``add_foundry_file``,
+    ``remove_foundry_file``, and ``reload_foundry_files`` this way.
 
 Assertion types
 ---------------
@@ -304,17 +227,17 @@ Each entry in *root* is a **full CSS selector** — not just an element tag name
 Pseudo-classes such as ``:nth-of-type(2)``, ``:last-of-type``, ``:nth-child``,
 and attribute selectors (``[name="x"]``) are all valid.
 
-Example — ``ha-button`` inside ``hui-tile-card`` inside ``uix-forge``::
+Example — ``ha-button`` inside ``hui-tile-card`` inside ``my-card``::
 
     root:
-      - uix-forge
+      - my-card
       - hui-tile-card
     selector: ha-button
 
-Example — targeting the **second** ``uix-forge`` on the page::
+Example — targeting the **second** ``my-card`` on the page::
 
     root:
-      - uix-forge:nth-of-type(2)
+      - my-card:nth-of-type(2)
       - hui-tile-card
     selector: ha-tile-icon
 
@@ -325,14 +248,14 @@ Example — targeting the **second** ``uix-forge`` on the page::
     element globally.  Pseudo-classes such as ``:nth-of-type`` therefore
     operate within whichever DOM level the element is found (i.e. among its
     siblings there), **not** across shadow-root boundaries.  For
-    ``uix-forge:nth-of-type(2)`` to work the two ``uix-forge`` elements must
+    ``my-card:nth-of-type(2)`` to work the two ``my-card`` elements must
     be **siblings** at the same DOM level (e.g. both direct children of the
     same grid section element).  In a standard sections/grid view each card
     is wrapped in a ``div.card`` element (which has no shadow root), so
     combine it with the child element in a single selector entry::
 
         root:
-          - div.card:nth-of-type(2) uix-forge
+          - div.card:nth-of-type(2) my-card
           - hui-tile-card
         selector: ha-tile-icon
 
@@ -550,6 +473,7 @@ import io
 import os
 import shutil
 import tarfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -573,6 +497,69 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 # docs/scenarios/ — YAML files here are documentation-image-only scenarios.
 # They participate in ``test_doc_images.py`` but not in ``test_scenarios.py``.
 DOCS_SCENARIOS_DIR = REPO_ROOT / "docs" / "scenarios"
+
+# ---------------------------------------------------------------------------
+# Extension registry
+# ---------------------------------------------------------------------------
+#
+# Consumers can extend the scenario runner with their own interaction and
+# assertion types without modifying this module.  Register handlers before
+# pytest collects tests — the conftest.py of the consumer project is a good
+# place to do this.
+#
+# Interaction handler signature:
+#   handler(page: Page | None, interaction: dict[str, Any], ha: Any = None) -> None
+#
+# Assertion handler signature:
+#   handler(page: Page, assertion: dict[str, Any]) -> None
+
+_interaction_extensions: dict[str, Callable] = {}
+_assertion_extensions: dict[str, Callable] = {}
+
+
+def register_interaction_type(name: str, handler: Callable) -> None:
+    """Register a custom interaction type handler.
+
+    The *handler* is called by :func:`run_interactions` when a scenario step
+    has ``type: <name>``.  It receives the Playwright ``page`` (may be
+    ``None`` for setup/teardown), the raw ``interaction`` dict from the
+    scenario YAML, and the ``ha`` container as a keyword argument.
+
+    Example — a custom ``my_action`` interaction type::
+
+        from scenario_runner import register_interaction_type
+
+        def _handle_my_action(page, interaction, ha=None):
+            if ha is None:
+                raise ValueError("my_action requires ha=")
+            ha._ws_call({"type": "my_component/do_thing", ...})
+
+        register_interaction_type("my_action", _handle_my_action)
+
+    Call this at import time (e.g. in a ``conftest.py``) so the handler is
+    available when pytest collects and parametrises tests.
+    """
+    _interaction_extensions[name] = handler
+
+
+def register_assertion_type(name: str, handler: Callable) -> None:
+    """Register a custom assertion type handler.
+
+    The *handler* is called by :func:`run_assertions` when an assertion step
+    has ``type: <name>``.  It receives the Playwright ``page`` and the raw
+    ``assertion`` dict from the scenario YAML.
+
+    Example::
+
+        from scenario_runner import register_assertion_type
+
+        def _handle_aria_label(page, assertion):
+            el = page.get_by_role("button", name=assertion["label"])
+            assert el.is_visible(), f"Expected button {assertion['label']!r}"
+
+        register_assertion_type("aria_label_visible", _handle_aria_label)
+    """
+    _assertion_extensions[name] = handler
 
 # ---------------------------------------------------------------------------
 # Padding helpers
@@ -645,17 +632,17 @@ _QUERY_DEEP_JS = """
 # ---------------------------------------------------------------------------
 
 # DOM id used for the injected cursor overlay element.
-_CURSOR_OVERLAY_ID = "__uix_cursor_overlay"
+_CURSOR_OVERLAY_ID = "__ha_tests_cursor_overlay"
 
 # JavaScript that installs a ``mousemove`` listener storing the current pointer
-# position in ``window.__uix_cursor_pos``.  Idempotent — safe to evaluate
+# position in ``window.__ha_tests_cursor_pos``.  Idempotent — safe to evaluate
 # multiple times on the same page.
 _MOUSE_TRACKER_JS = """\
 () => {
-    if (!window.__uix_cursor_pos) {
-        window.__uix_cursor_pos = {x: 0, y: 0};
+    if (!window.__ha_tests_cursor_pos) {
+        window.__ha_tests_cursor_pos = {x: 0, y: 0};
         document.addEventListener('mousemove', function(e) {
-            window.__uix_cursor_pos = {x: e.clientX, y: e.clientY};
+            window.__ha_tests_cursor_pos = {x: e.clientX, y: e.clientY};
         }, {capture: true, passive: true});
     }
 }"""
@@ -665,21 +652,21 @@ _MOUSE_TRACKER_JS = """\
 # ---------------------------------------------------------------------------
 
 # DOM id used for the injected click-circle overlay element.
-_CLICK_CIRCLE_OVERLAY_ID = "__uix_click_circle"
+_CLICK_CIRCLE_OVERLAY_ID = "__ha_tests_click_circle"
 
 # Default diameter of the click-circle overlay in CSS pixels.
 _CLICK_CIRCLE_SIZE = 40
 
 # JavaScript that installs a ``mousedown`` listener storing the last click
-# position in ``window.__uix_click_pos``.  Idempotent — safe to evaluate
+# position in ``window.__ha_tests_click_pos``.  Idempotent — safe to evaluate
 # multiple times on the same page.
 _CLICK_TRACKER_JS = """\
 () => {
-    if (window.__uix_click_tracker_installed) return;
-    window.__uix_click_tracker_installed = true;
-    window.__uix_click_pos = null;
+    if (window.__ha_tests_click_tracker_installed) return;
+    window.__ha_tests_click_tracker_installed = true;
+    window.__ha_tests_click_pos = null;
     document.addEventListener('mousedown', function(e) {
-        window.__uix_click_pos = {x: e.clientX, y: e.clientY};
+        window.__ha_tests_click_pos = {x: e.clientX, y: e.clientY};
     }, {capture: true, passive: true});
 }"""
 
@@ -692,7 +679,7 @@ _CLICK_CIRCLE_INJECTION_JS = """\
 ([overlayId, size, cssColor]) => {
     var existing = document.getElementById(overlayId);
     if (existing) existing.remove();
-    var pos = window.__uix_click_pos;
+    var pos = window.__ha_tests_click_pos;
     if (!pos) return;
     var el = document.createElement('div');
     el.id = overlayId;
@@ -725,7 +712,7 @@ _CURSOR_INJECTION_JS = """\
 ([svgHtml, hotspotX, hotspotY, overlayId]) => {
     var existing = document.getElementById(overlayId);
     if (existing) existing.remove();
-    var pos = window.__uix_cursor_pos || {x: 0, y: 0};
+    var pos = window.__ha_tests_cursor_pos || {x: 0, y: 0};
     var el = document.createElement('div');
     el.id = overlayId;
     el.style.cssText = (
@@ -835,7 +822,7 @@ def push_scenario(ha: HATestContainer, url_path: str, scenario: dict[str, Any]) 
 
     ``card:``
         A single card definition.  It is automatically wrapped in a
-        ``sections`` view (with a ``grid`` section) so that UIX renders it in
+        ``sections`` view (with a ``grid`` section) so the card is rendered in
         the same layout as a real Lovelace dashboard:
 
         .. code-block:: yaml
@@ -869,7 +856,7 @@ def push_scenario(ha: HATestContainer, url_path: str, scenario: dict[str, Any]) 
     else:
         cards = scenario["cards"] if "cards" in scenario else [scenario["card"]]
         config = {
-            "title": f"UIX Scenario: {scenario['id']}",
+            "title": f"HA Test Scenario: {scenario['id']}",
             "views": [
                 {
                     "title": scenario.get("description", scenario["id"]),
@@ -889,7 +876,7 @@ def push_scenario(ha: HATestContainer, url_path: str, scenario: dict[str, Any]) 
 
 def clear_scenario(ha: HATestContainer, url_path: str) -> None:
     """Remove all views from the named dashboard after a scenario finishes."""
-    push_lovelace_config_to(ha, url_path, {"title": "UIX Tests", "views": []})
+    push_lovelace_config_to(ha, url_path, {"title": "HA Tests", "views": []})
 
 
 # ---------------------------------------------------------------------------
@@ -898,10 +885,11 @@ def clear_scenario(ha: HATestContainer, url_path: str) -> None:
 
 
 def goto_scenario(page: Page, ha_url: str, url_path: str, view_path: str) -> None:
-    """Navigate to *view_path* on the named dashboard and wait for UIX to settle.
+    """Navigate to *view_path* on the named dashboard and wait for the page to settle.
 
-    UIX template evaluation is asynchronous — it finishes after network-idle —
-    so we wait an additional ``2×HA_SETTLE_MS`` before running assertions.
+    Template evaluation and async HA state updates are asynchronous and finish
+    after network-idle, so we wait an additional ``2×HA_SETTLE_MS`` before
+    running assertions.
     """
     __tracebackhide__ = True
     page.goto(
@@ -929,22 +917,19 @@ def run_interactions(
     hover that reveals a tooltip, a click that changes entity state) before
     running assertions and snapshots.
 
-    Pass the HA container as *ha* when any ``ha_service``, ``add_foundry``,
-    ``delete_foundry``, ``add_foundry_file``, ``remove_foundry_file``,
-    ``reload_foundry_files``, or ``write_config_file`` interactions are present
-    in the scenario.
+    Pass the HA container as *ha* when any ``ha_service``,
+    ``device_registry_update``, ``write_config_file``, or any
+    consumer-registered interaction types that require the container are
+    present in the scenario.
 
     *key* selects which list to execute.  Use ``"setup"`` for interactions that
-    should run **before** page navigation (e.g. ``ha_service``,
-    ``add_foundry``, and ``add_foundry_file`` calls that create entities or
-    foundries so they exist when the page first loads); use the default
-    ``"interactions"`` for actions taken after navigation; use ``"teardown"``
-    for cleanup steps (e.g. ``delete_foundry``, ``remove_foundry_file``,
-    ``write_config_file``) that must run after assertions even when the test
-    fails.  Only ``ha_service``, ``device_registry_update``, ``add_foundry``,
-    ``delete_foundry``, ``add_foundry_file``, ``remove_foundry_file``,
-    ``reload_foundry_files``, ``write_config_file``, and ``wait`` interaction
-    types are meaningful in ``setup`` and ``teardown`` blocks.
+    should run **before** page navigation (e.g. ``ha_service`` calls that put
+    entities into a known state); use the default ``"interactions"`` for
+    actions taken after navigation; use ``"teardown"`` for cleanup steps that
+    must run after assertions even when the test fails.
+
+    Custom interaction types can be registered with
+    :func:`register_interaction_type`.
     """
     __tracebackhide__ = True
     for interaction in scenario.get(key, []):
@@ -969,41 +954,6 @@ def run_interactions(
                     "pass ha= to run_interactions()"
                 )
             _update_device_registry(ha, interaction)
-        elif itype == "add_foundry":
-            if ha is None:
-                raise ValueError(
-                    "add_foundry interaction requires the ha container — "
-                    "pass ha= to run_interactions()"
-                )
-            _set_foundry(ha, interaction)
-        elif itype == "delete_foundry":
-            if ha is None:
-                raise ValueError(
-                    "delete_foundry interaction requires the ha container — "
-                    "pass ha= to run_interactions()"
-                )
-            _delete_foundry(ha, interaction)
-        elif itype == "add_foundry_file":
-            if ha is None:
-                raise ValueError(
-                    "add_foundry_file interaction requires the ha container — "
-                    "pass ha= to run_interactions()"
-                )
-            _add_foundry_file(ha, interaction)
-        elif itype == "remove_foundry_file":
-            if ha is None:
-                raise ValueError(
-                    "remove_foundry_file interaction requires the ha container — "
-                    "pass ha= to run_interactions()"
-                )
-            _remove_foundry_file(ha, interaction)
-        elif itype == "reload_foundry_files":
-            if ha is None:
-                raise ValueError(
-                    "reload_foundry_files interaction requires the ha container — "
-                    "pass ha= to run_interactions()"
-                )
-            _reload_foundry_files(ha)
         elif itype == "dispatch_window_event":
             event = interaction["event"]
             settle_ms = interaction.get("settle_ms", 1000)
@@ -1021,8 +971,13 @@ def run_interactions(
             _write_config_file(ha, interaction)
         elif itype == "wait":
             page.wait_for_timeout(interaction.get("ms", 500))
+        elif itype in _interaction_extensions:
+            _interaction_extensions[itype](page, interaction, ha=ha)
         else:
-            raise ValueError(f"Unknown interaction type: {itype!r}")
+            raise ValueError(
+                f"Unknown interaction type: {itype!r}. "
+                "Register custom types with scenario_runner.register_interaction_type()."
+            )
 
 
 def _perform_hover(page: Page, interaction: dict[str, Any]) -> None:
@@ -1063,7 +1018,7 @@ def _perform_click(page: Page, interaction: dict[str, Any]) -> None:
     using JS (``getBoundingClientRect`` + ``page.mouse.click``).  Otherwise
     a simple page-level Playwright locator click is used.
 
-    Use ``settle_ms`` to allow enough time for entity state changes and UIX
+    Use ``settle_ms`` to allow enough time for entity state changes and
     template re-renders to propagate back to the browser after the click.
     """
     __tracebackhide__ = True
@@ -1172,108 +1127,6 @@ def _update_device_registry(ha: HATestContainer, interaction: dict[str, Any]) ->
         )
 
 
-def _set_foundry(ha: HATestContainer, interaction: dict[str, Any]) -> None:
-    """Create or update a UIX foundry via the WebSocket API (``uix/set_foundry``)."""
-    __tracebackhide__ = True
-    name: str = interaction["name"]
-    config: dict[str, Any] = dict(interaction["config"])
-    result = ha._ws_call(
-        {
-            "id": 1,
-            "type": "uix/set_foundry",
-            "name": name,
-            "config": config,
-        }
-    )
-    if not result.get("success"):
-        raise RuntimeError(
-            f"uix/set_foundry failed for {name!r}: {result}"
-        )
-
-
-def _delete_foundry(ha: HATestContainer, interaction: dict[str, Any]) -> None:
-    """Delete a UIX foundry via the WebSocket API (``uix/delete_foundry``)."""
-    __tracebackhide__ = True
-    name: str = interaction["name"]
-    result = ha._ws_call(
-        {
-            "id": 1,
-            "type": "uix/delete_foundry",
-            "name": name,
-        }
-    )
-    if not result.get("success"):
-        raise RuntimeError(
-            f"uix/delete_foundry failed for {name!r}: {result}"
-        )
-
-
-def _add_foundry_file(ha: HATestContainer, interaction: dict[str, Any]) -> None:
-    """Register a foundry YAML file via the WebSocket API (``uix/add_foundry_file``).
-
-    The file must already exist in the HA config directory.  Use in ``setup:``
-    to make file-based foundries available before the page loads.  Pair with
-    ``remove_foundry_file`` in ``teardown:`` to deregister it afterwards.
-    """
-    __tracebackhide__ = True
-    file_path: str = interaction["file_path"]
-    result = ha._ws_call(
-        {
-            "id": 1,
-            "type": "uix/add_foundry_file",
-            "file_path": file_path,
-        }
-    )
-    if not result.get("success"):
-        raise RuntimeError(
-            f"uix/add_foundry_file failed for {file_path!r}: {result}"
-        )
-
-
-def _remove_foundry_file(ha: HATestContainer, interaction: dict[str, Any]) -> None:
-    """Deregister a foundry YAML file via the WebSocket API (``uix/remove_foundry_file``).
-
-    Removes the file path from the UIX config entry so it is no longer loaded.
-    The file itself is not deleted.  Use in ``teardown:`` to clean up after an
-    ``add_foundry_file`` setup step.
-    """
-    __tracebackhide__ = True
-    file_path: str = interaction["file_path"]
-    result = ha._ws_call(
-        {
-            "id": 1,
-            "type": "uix/remove_foundry_file",
-            "file_path": file_path,
-        }
-    )
-    if not result.get("success"):
-        raise RuntimeError(
-            f"uix/remove_foundry_file failed for {file_path!r}: {result}"
-        )
-
-
-def _reload_foundry_files(ha: HATestContainer) -> None:
-    """Trigger a re-read of all registered foundry files via the WebSocket API
-    (``uix/reload_foundry_files``).
-
-    Fires the foundries-updated event on the server so all connected clients
-    receive the latest file contents.  Useful when file content has changed
-    between setup steps and you want those changes to propagate before the
-    page loads.
-    """
-    __tracebackhide__ = True
-    result = ha._ws_call(
-        {
-            "id": 1,
-            "type": "uix/reload_foundry_files",
-        }
-    )
-    if not result.get("success"):
-        raise RuntimeError(
-            f"uix/reload_foundry_files failed: {result}"
-        )
-
-
 def _write_config_file(ha: HATestContainer, interaction: dict[str, Any]) -> None:
     """Write (or overwrite) a file inside the HA config directory.
 
@@ -1350,8 +1203,13 @@ def run_assertions(page: Page, scenario: dict[str, Any]) -> None:
             "text_startswith",
         }:
             _run_dom_assertion(page, assertion, atype)
+        elif atype in _assertion_extensions:
+            _assertion_extensions[atype](page, assertion)
         else:
-            raise ValueError(f"Unknown assertion type: {atype!r}")
+            raise ValueError(
+                f"Unknown assertion type: {atype!r}. "
+                "Register custom types with scenario_runner.register_assertion_type()."
+            )
 
 
 def _assert_snapshot_with_threshold(
@@ -1685,7 +1543,7 @@ def capture_doc_image(
     ---------
     * If the output file does not yet exist it is created (first-run bootstrap).
     * If ``DOC_IMAGE_UPDATE=1`` is set in the environment the file is always
-      overwritten (useful after intentional visual changes to HA or UIX).
+      overwritten (useful after intentional visual changes to HA or your component).
     * Otherwise the freshly captured PNG is compared to the on-disk file using
       the same pixel-diff logic as snapshot assertions.  The test fails when
       the images differ beyond *threshold*, prompting the author to run with
@@ -2226,7 +2084,7 @@ def _get_doc_image_rect(page: Page, selector: str) -> dict[str, float]:
 def _ensure_mouse_tracker(page: Page) -> None:
     """Install a ``mousemove`` listener that stores the current pointer position.
 
-    Stores the position in ``window.__uix_cursor_pos`` as ``{x, y}`` in CSS
+    Stores the position in ``window.__ha_tests_cursor_pos`` as ``{x, y}`` in CSS
     pixels.  Idempotent — safe to call multiple times on the same page.
     """
     page.evaluate(_MOUSE_TRACKER_JS)
@@ -2277,7 +2135,7 @@ def _remove_cursor(page: Page) -> None:
 def _ensure_click_tracker(page: Page) -> None:
     """Install a ``mousedown`` listener that stores the last click position.
 
-    Stores the position in ``window.__uix_click_pos`` as ``{x, y}`` in CSS
+    Stores the position in ``window.__ha_tests_click_pos`` as ``{x, y}`` in CSS
     pixels.  Idempotent — safe to call multiple times on the same page.
     """
     page.evaluate(_CLICK_TRACKER_JS)
@@ -2292,7 +2150,7 @@ def _inject_click_circle(page: Page) -> None:
     a thin dark outer shadow ring so it remains legible on both light and dark
     screenshot backgrounds.
 
-    The position is read from ``window.__uix_click_pos`` set by the
+    The position is read from ``window.__ha_tests_click_pos`` set by the
     ``mousedown`` listener installed by :func:`_ensure_click_tracker`.  If no
     click has been recorded yet (the listener has not fired) this function is a
     no-op.
