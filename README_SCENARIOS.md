@@ -352,15 +352,23 @@ Shadow-root form:
 
 ### `css_property`
 
+The `property` value is read as a **JavaScript property** on the
+`CSSStyleDeclaration` object returned by `getComputedStyle(el)`, so use
+**camelCase** names (e.g. `backgroundColor`, not `background-color`).
+
 ```yaml
 - type: css_property
   root: my-card
   selector: ha-card
-  property: background-color
+  property: backgroundColor
   expected: "rgb(0, 200, 100)"
 ```
 
 ### `css_variable`
+
+The `property` value is passed to `getComputedStyle(el).getPropertyValue(prop)`,
+so use the CSS custom property name exactly as declared, including the `--` prefix
+and any hyphens.
 
 ```yaml
 - type: css_variable
@@ -411,6 +419,10 @@ pytest tests/visual/
 > They should never appear in ha-testcontainer's own history.  Add
 > `tests/visual/snapshots/*.actual.png` (and any unreferenced `*.png` files)
 > to `.gitignore`.
+
+> **See also: [Generating Documentation Images guide](README_DOC_IMAGES.md)** — use
+> `doc_image:` and `doc_animation:` in scenario YAML to also capture documentation
+> screenshots and animated GIFs as part of the same test run.
 
 ---
 

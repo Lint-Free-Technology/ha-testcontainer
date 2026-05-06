@@ -180,6 +180,9 @@ scenarios directory.
 > **See also: [Writing Scenarios guide](README_SCENARIOS.md)** — best practices
 > for setting entity states, structuring test cards, and keeping the test
 > environment isolated from any locally-running Home Assistant instance.
+>
+> **See also: [Generating Documentation Images guide](README_DOC_IMAGES.md)** — how to use
+> `doc_image:` and `doc_animation:` to capture and verify documentation screenshots and GIFs.
 
 ```python
 # tests/conftest.py
