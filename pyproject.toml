@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ha-testcontainer"
-version = "1.0.2"
+version = "1.1.0"
 description = "Full test container for Home Assistant with demo config, custom components, and visual testing"
 readme = "README.md"
 requires-python = ">=3.11"

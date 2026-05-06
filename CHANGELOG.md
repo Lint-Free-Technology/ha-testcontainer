@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.1.0 (2026-05-06)
+
+### Bug Fixes
+
+- Move UIX-specific LICENSES.md from generic ha-config to ha-tests/uix parking lot
+  ([`ed630df`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/ed630df6aeac11d963529890ca787994e0697300))
+
+### Features
+
+- Add ha-tests generic Lovelace test framework with UIX parked for migration
+  ([`ef55b1b`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/ef55b1b7289800acdec3b7b24de92649dbdc22da))
+
+
 ## v1.0.2 (2026-04-12)
 
 ### Bug Fixes
