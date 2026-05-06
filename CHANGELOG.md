@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.1.0 (2026-05-06)
+
+### Features
+
+- Add local plugin registration for dashboard plugin testing
+  ([`be2c85d`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/be2c85da45bcd9f69b8697b97ac9f84580ebe131))
+
+
 ## v2.0.0 (2026-05-06)
 
 ### Breaking Changes
