@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v2.0.0 (2026-05-06)
+
+### Breaking Changes
+
+- **Renamed environment variables**: `LOVELACE_EXTRA_CONFIG_DIR` → `HA_EXTRA_CONFIG_DIR`,
+  `LOVELACE_PLUGINS_YAML` → `HA_PLUGINS_YAML`, `LOVELACE_SETUP_INTEGRATION` → `HA_SETUP_INTEGRATION`.
+  Update any scripts, Makefiles, or CI config that set these variables.
+- **pytest plugin auto-registered**: `ha_testcontainer[test]` now registers a `pytest11` entry-point
+  (`ha_testcontainer.pytest_plugin`) that provides the `ha`, `ha_url`, `ha_token`,
+  `ha_lovelace_url_path`, `ha_browser_context`, and `ha_page` fixtures automatically.
+  Consumers who previously copied conftest.py from ha-tests/ should remove those copies.
+
+### Features
+
+- Ship the visual test framework as `ha_testcontainer.visual.*` sub-modules:
+  `ha_testcontainer.visual.scenario_runner`, `ha_testcontainer.visual.lovelace_helpers`,
+  `ha_testcontainer.visual.cursors`.
+- Add `ha_testcontainer.plugins` — `download_lovelace_plugins()` for downloading Lovelace JS plugins.
+- Add `ha_testcontainer.ha_server` — persistent HA dev server for fast iterative testing
+  (`python -m ha_testcontainer.ha_server`).
+- Add `ha_testcontainer.pytest_plugin` — session/visual fixtures as a registered pytest plugin.
+- Add `PyYAML>=6.0` to `[test]` and `[visual]` extras (required by `scenario_runner` and `plugins`).
+- Convert `ha-tests/` files to thin shims that import from `ha_testcontainer.*`.
+
 ## v1.1.0 (2026-05-06)
 
 ### Bug Fixes

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ha-testcontainer"
-version = "1.1.0"
+version = "2.0.0"
 description = "Full test container for Home Assistant with demo config, custom components, and visual testing"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -30,17 +30,22 @@ visual = [
     "playwright>=1.50",
     "pytest-playwright>=0.5",
     "Pillow>=10.0",
+    "PyYAML>=6.0",
 ]
 test = [
     "pytest>=8.0",
     "pytest-playwright>=0.5",
     "playwright>=1.50",
     "Pillow>=10.0",
+    "PyYAML>=6.0",
 ]
 
 [project.urls]
 Homepage = "https://github.com/Lint-Free-Technology/ha-testcontainer"
 Issues = "https://github.com/Lint-Free-Technology/ha-testcontainer/issues"
+
+[project.entry-points."pytest11"]
+ha_testcontainer = "ha_testcontainer.pytest_plugin"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

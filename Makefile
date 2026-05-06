@@ -10,12 +10,12 @@ PYTHON ?= python3
 COMPONENT ?=
 
 # Optional overrides for ha-tests targets (consumers pass these in):
-#   LOVELACE_SETUP_INTEGRATION — integration domain to auto-configure (e.g. uix)
-#   LOVELACE_EXTRA_CONFIG_DIR  — component-specific ha-config additions to merge
-#   LOVELACE_PLUGINS_YAML      — alternative plugins.yaml (e.g. ha-tests/uix/plugins.yaml)
-LOVELACE_SETUP_INTEGRATION ?=
-LOVELACE_EXTRA_CONFIG_DIR ?=
-LOVELACE_PLUGINS_YAML ?=
+#   HA_SETUP_INTEGRATION — integration domain to auto-configure (e.g. uix)
+#   HA_EXTRA_CONFIG_DIR  — component-specific ha-config additions to merge
+#   HA_PLUGINS_YAML      — alternative plugins.yaml (e.g. ha-tests/uix/plugins.yaml)
+HA_SETUP_INTEGRATION ?=
+HA_EXTRA_CONFIG_DIR ?=
+HA_PLUGINS_YAML ?=
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -79,14 +79,14 @@ update-snapshots:
 #
 # UIX example:
 #   make ha-tests-up \
-#     LOVELACE_SETUP_INTEGRATION=uix \
-#     LOVELACE_EXTRA_CONFIG_DIR=ha-tests/uix/ha-config \
-#     LOVELACE_PLUGINS_YAML=ha-tests/uix/plugins.yaml
+#     HA_SETUP_INTEGRATION=uix \
+#     HA_EXTRA_CONFIG_DIR=ha-tests/uix/ha-config \
+#     HA_PLUGINS_YAML=ha-tests/uix/plugins.yaml
 
 _HA_TESTS_ENV = \
-  $(if $(LOVELACE_SETUP_INTEGRATION),LOVELACE_SETUP_INTEGRATION=$(LOVELACE_SETUP_INTEGRATION)) \
-  $(if $(LOVELACE_EXTRA_CONFIG_DIR),LOVELACE_EXTRA_CONFIG_DIR=$(LOVELACE_EXTRA_CONFIG_DIR)) \
-  $(if $(LOVELACE_PLUGINS_YAML),LOVELACE_PLUGINS_YAML=$(LOVELACE_PLUGINS_YAML))
+  $(if $(HA_SETUP_INTEGRATION),HA_SETUP_INTEGRATION=$(HA_SETUP_INTEGRATION)) \
+  $(if $(HA_EXTRA_CONFIG_DIR),HA_EXTRA_CONFIG_DIR=$(HA_EXTRA_CONFIG_DIR)) \
+  $(if $(HA_PLUGINS_YAML),HA_PLUGINS_YAML=$(HA_PLUGINS_YAML))
 
 ## Run non-visual ha-tests (doc audit, import checks)
 ha-tests:

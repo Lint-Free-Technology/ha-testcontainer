@@ -108,7 +108,34 @@ with HATestContainer(
     print(ha.get_token())  # long-lived access token
 ```
 
-### pytest fixture example
+### pytest plugin (zero-boilerplate visual testing)
+
+When you install `ha-testcontainer[test]`, the package registers a pytest
+plugin automatically via the `pytest11` entry-point.  The plugin provides the
+following fixtures out-of-the-box — **no `conftest.py` import required**:
+
+| Fixture | Scope | Description |
+|---|---|---|
+| `ha` | session | Running HA instance (Docker or external) |
+| `ha_url` | session | Base URL, e.g. `http://localhost:8123` |
+| `ha_token` | session | Long-lived access token |
+| `ha_lovelace_url_path` | session | URL path of the test Lovelace dashboard |
+| `ha_browser_context` | session | Pre-authenticated Playwright browser context |
+| `ha_page` | function | Fresh Playwright page (auth inherited from context) |
+
+Configure the plugin with environment variables:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `HA_VERSION` | `stable` | Docker image tag |
+| `HA_CONFIG_PATH` | _(none)_ | Host config dir mounted as `/config` |
+| `HA_CUSTOM_COMPONENTS_PATH` | _(none)_ | Host dir mounted as `/config/custom_components` |
+| `HA_SETUP_INTEGRATION` | _(none)_ | Integration domain to configure via config-flow |
+| `HA_EXTRA_CONFIG_DIR` | _(none)_ | Directory merged on top of `HA_CONFIG_PATH` |
+| `HA_PLUGINS_YAML` | _(none)_ | Path to a `plugins.yaml` listing Lovelace plugins |
+| `HA_URL` + `HA_TOKEN` | _(none)_ | Connect to a pre-running HA instance instead of Docker |
+
+### pytest fixture example (manual, without plugin)
 
 ```python
 # conftest.py
@@ -142,6 +169,46 @@ def test_my_card(ha_page, ha_url):
 ```
 
 Run `SNAPSHOT_UPDATE=1 pytest tests/visual/` to create or update baselines.
+
+### YAML-driven scenario tests
+
+The scenario runner (`ha_testcontainer.visual.scenario_runner`) lets you write
+visual tests as plain YAML files — no Python code required.  Configure it in
+your `conftest.py` and it automatically picks up all `*.yaml` files in your
+scenarios directory:
+
+```python
+# tests/conftest.py
+from pathlib import Path
+import ha_testcontainer.visual.scenario_runner as sr
+
+sr.SCENARIOS_DIR = Path(__file__).parent / "scenarios"
+sr.SNAPSHOTS_DIR = Path(__file__).parent / "snapshots"
+sr.REPO_ROOT = Path(__file__).parent.parent
+```
+
+```python
+# tests/visual/test_scenarios.py
+import pytest
+from playwright.sync_api import Page
+from ha_testcontainer.visual.scenario_runner import (
+    load_all_scenarios, push_scenario, goto_scenario,
+    run_interactions, run_assertions, clear_scenario,
+)
+
+_ALL = load_all_scenarios()
+
+@pytest.mark.parametrize("scenario_id", [s["id"] for s in _ALL])
+def test_scenario(scenario_id, ha, ha_page: Page, ha_url, ha_lovelace_url_path):
+    scenario = next(s for s in _ALL if s["id"] == scenario_id)
+    push_scenario(ha, ha_lovelace_url_path, scenario)
+    try:
+        goto_scenario(ha_page, ha_url, ha_lovelace_url_path, scenario["view_path"])
+        run_interactions(ha_page, scenario, ha=ha)
+        run_assertions(ha_page, scenario)
+    finally:
+        clear_scenario(ha, ha_lovelace_url_path)
+```
 
 ---
 
@@ -213,6 +280,9 @@ HA_VERSION=2024.6.0 make test
 | `HA_VERSION` | `stable` | Image tag |
 | `HA_CONFIG_PATH` | `ha-config/` | Host dir mounted as `/config` |
 | `HA_CUSTOM_COMPONENTS_PATH` | `custom_components/` | Host dir mounted as `/config/custom_components` |
+| `HA_SETUP_INTEGRATION` | _(unset)_ | Integration domain to configure via config-flow |
+| `HA_EXTRA_CONFIG_DIR` | _(unset)_ | Directory merged on top of `HA_CONFIG_PATH` before start |
+| `HA_PLUGINS_YAML` | _(unset)_ | Path to a `plugins.yaml` listing Lovelace plugins to download |
 
 ---
 
@@ -223,7 +293,14 @@ ha-testcontainer/
 ├── ha_testcontainer/
 │   ├── __init__.py          # public API: HATestContainer, HAVersion, visual helpers
 │   ├── container.py         # HATestContainer implementation
-│   └── visual.py            # PAGE_LOAD_TIMEOUT, assert_snapshot, inject_ha_token
+│   ├── plugins.py           # download_lovelace_plugins — fetch Lovelace JS plugins
+│   ├── ha_server.py         # persistent HA dev server (python -m ha_testcontainer.ha_server)
+│   ├── pytest_plugin.py     # pytest plugin: ha, ha_url, ha_token, ha_page fixtures
+│   └── visual/
+│       ├── __init__.py      # PAGE_LOAD_TIMEOUT, assert_snapshot, inject_ha_token
+│       ├── cursors.py       # SVG cursor overlays for doc images/animations
+│       ├── lovelace_helpers.py  # push_lovelace_config_to WS helper
+│       └── scenario_runner.py   # YAML-driven scenario engine
 ├── ha-config/
 │   ├── configuration.yaml        # demo HA config (default_config + demo integration)
 │   ├── lovelace_resources.yaml   # Lovelace resources list (managed by fetch_plugin.py)
@@ -236,6 +313,19 @@ ha-testcontainer/
 │   └── fetch_plugin.py           # download any JS frontend plugin; register as resource
 ├── examples/
 │   └── test_custom_component.py  # boilerplate visual test — copy & customise
+├── ha-tests/                     # reference integration / thin shims (authoritative code is in ha_testcontainer/)
+│   ├── conftest.py               # configures ha_testcontainer plugin paths for this test suite
+│   ├── ha_server.py              # shim → ha_testcontainer.ha_server
+│   ├── plugins.py                # shim → ha_testcontainer.plugins
+│   ├── plugins.yaml              # Lovelace plugin registry for ha-tests/
+│   ├── ha-config/                # HA config for the ha-tests/ suite
+│   └── visual/
+│       ├── conftest.py           # shim (fixtures come from the pytest plugin)
+│       ├── scenario_runner.py    # shim → ha_testcontainer.visual.scenario_runner
+│       ├── lovelace_helpers.py   # shim → ha_testcontainer.visual.lovelace_helpers
+│       ├── cursors.py            # shim → ha_testcontainer.visual.cursors
+│       ├── scenarios/            # YAML scenario files for this test suite
+│       └── snapshots/            # gitignored baseline PNGs
 ├── tests/
 │   ├── conftest.py               # session-scoped ha / ha_url / ha_token fixtures
 │   ├── test_container_unit.py    # unit tests — no Docker needed (14 tests)
