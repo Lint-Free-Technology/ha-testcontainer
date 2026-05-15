@@ -192,7 +192,7 @@ class TestDocAnimationViewportNormalization:
                 "dither": False,
                 "segments": [
                     {"interactions": [{"type": "set_viewport", "width": 8, "height": 6}], "frames": 1},
-                    {"interactions": [{"type": "wait", "ms": 1}, {"type": "set_viewport", "width": 5, "height": 4}], "frames": 1},
+                    {"interactions": [{"type": "set_viewport", "width": 5, "height": 4}], "frames": 1},
                     {"interactions": [{"type": "set_viewport", "width": 3, "height": 2}], "frames": 1},
                 ],
             }
