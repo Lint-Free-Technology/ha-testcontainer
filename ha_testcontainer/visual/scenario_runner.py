@@ -2048,7 +2048,7 @@ def capture_doc_animation(
     _remove_cursor(page)
     _remove_click_circle(page)
 
-    # --- normalise frame sizes ---
+    # --- normalize frame sizes ---
     # When viewport size changes within one animation, later screenshots may be
     # smaller than earlier ones.  Composite every frame onto a fixed-size canvas
     # so uncovered regions are explicitly cleared and no stale pixels bleed
