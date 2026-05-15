@@ -96,8 +96,8 @@ def _png_bytes(width: int, height: int, color: tuple[int, int, int]) -> bytes:
 
 def _read_gif_frames(path) -> list[Image.Image]:
     """Return GIF frames as RGB images."""
-    gif = Image.open(path)
-    return [f.copy().convert("RGB") for f in ImageSequence.Iterator(gif)]
+    with Image.open(path) as gif:
+        return [f.copy().convert("RGB") for f in ImageSequence.Iterator(gif)]
 
 
 class TestDocAnimationViewportNormalization:
@@ -113,9 +113,9 @@ class TestDocAnimationViewportNormalization:
         save_kwargs: dict[str, object] = {}
         orig_save = Image.Image.save
 
-        def _save_with_capture(self, fp, format=None, **params):
+        def _save_with_capture(self, file_obj, format=None, **params):
             save_kwargs.update(params)
-            return orig_save(self, fp, format=format, **params)
+            return orig_save(self, file_obj, format=format, **params)
 
         monkeypatch.setattr(Image.Image, "save", _save_with_capture)
         monkeypatch.setattr(sr, "REPO_ROOT", tmp_path)
