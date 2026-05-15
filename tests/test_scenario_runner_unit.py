@@ -97,6 +97,8 @@ def _png_bytes(width: int, height: int, color: tuple[int, int, int]) -> bytes:
 def _read_gif_frames(path) -> list[Image.Image]:
     """Return GIF frames as RGB images."""
     with Image.open(path) as gif:
+        if gif.format != "GIF":
+            raise ValueError(f"Expected GIF file, got: {gif.format}")
         return [f.copy().convert("RGB") for f in ImageSequence.Iterator(gif)]
 
 
@@ -138,6 +140,7 @@ class TestDocAnimationViewportNormalization:
         output = tmp_path / "docs/assets/viewport-large-small.gif"
         frames = _read_gif_frames(output)
         assert [f.size for f in frames] == [(8, 6), (8, 6)]
+        # (6,4) sits outside the 4x3 second frame; it must be cleared to white.
         assert frames[1].getpixel((6, 4)) == (255, 255, 255)
         assert save_kwargs.get("disposal") == 2
         assert page.set_viewport_size.call_args_list == [
@@ -172,6 +175,7 @@ class TestDocAnimationViewportNormalization:
         output = tmp_path / "docs/assets/viewport-small-large.gif"
         frames = _read_gif_frames(output)
         assert [f.size for f in frames] == [(8, 6), (8, 6)]
+        # (6,4) sits outside the 4x3 first frame; it must be cleared to white.
         assert frames[0].getpixel((6, 4)) == (255, 255, 255)
 
     def test_mixed_segment_interactions_keep_consistent_frame_size(self, tmp_path, monkeypatch):
@@ -203,5 +207,6 @@ class TestDocAnimationViewportNormalization:
         output = tmp_path / "docs/assets/viewport-mixed-segments.gif"
         frames = _read_gif_frames(output)
         assert [f.size for f in frames] == [(8, 6), (8, 6), (8, 6)]
+        # (7,5) is outside both smaller later frames and must be white.
         assert frames[1].getpixel((7, 5)) == (255, 255, 255)
         assert frames[2].getpixel((7, 5)) == (255, 255, 255)

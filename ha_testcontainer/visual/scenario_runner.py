@@ -524,6 +524,9 @@ REPO_ROOT: Path = Path.cwd()
 # They participate in ``test_doc_images.py`` but not in ``test_scenarios.py``.
 DOCS_SCENARIOS_DIR: Path = REPO_ROOT / "docs" / "scenarios"
 
+# Background colour for normalized doc_animation canvases.
+CANVAS_BACKGROUND_RGBA: tuple[int, int, int, int] = (255, 255, 255, 255)
+
 # ---------------------------------------------------------------------------
 # Extension registry
 # ---------------------------------------------------------------------------
@@ -2060,7 +2063,7 @@ def capture_doc_animation(
         if f.size == (max_w, max_h):
             frame_images.append(f)
             continue
-        canvas = Image.new("RGBA", (max_w, max_h), (255, 255, 255, 255))
+        canvas = Image.new("RGBA", (max_w, max_h), CANVAS_BACKGROUND_RGBA)
         canvas.paste(f, (0, 0))
         frame_images.append(canvas)
 
