@@ -315,6 +315,19 @@ Shadow-root form:
   settle_ms: 1000
 ```
 
+### `set_viewport` — resize the browser viewport
+
+Resize the viewport to the given *width* and *height* (in CSS pixels) using
+Playwright's `page.set_viewport_size`.  Use this to simulate responsive
+breakpoints or to verify how a card adapts to different screen sizes.
+
+```yaml
+- type: set_viewport
+  width: 375
+  height: 812
+  settle_ms: 300   # optional, default 0 — wait for CSS transitions to settle
+```
+
 ### `write_config_file` — write a file into the HA config directory
 
 ```yaml
