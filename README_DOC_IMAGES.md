@@ -198,6 +198,11 @@ doc_animation:
 | `interactions` | | Interactions to run **before** the first frame (flat mode only). Same types as top-level `interactions:` |
 | `segments` | | List of capture segments (segmented mode — see below). When present, top-level `frames:` and `interactions:` are ignored |
 
+> **Workaround for older versions:** If you are using a version before this fix
+> and change viewport size within one `doc_animation`, you may see ghost pixels
+> from earlier larger frames. Split the flow into separate animations, or use a
+> fixed `root` crop that keeps frame dimensions constant.
+
 ---
 
 ## Cursor and click-circle overlays
