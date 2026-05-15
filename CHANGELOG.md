@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v2.2.0 (2026-05-15)
+
+### Documentation
+
+- Add README_SCENARIOS.md and link from README.md
+  ([`c620b18`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/c620b181577a5cbac1eb0f456de10c9fb84233c6))
+
+- Fix css_property example (camelCase), add README_DOC_IMAGES.md, cross-link guides
+  ([`6f1c37a`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/6f1c37a2b5536625280f4ba76dd5e60fde37212b))
+
+### Features
+
+- Add set_viewport interaction step for responsive testing
+  ([`b2537d8`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/b2537d880c9e7cf81559325067993d36df83bf84))
+
+
 ## v2.1.0 (2026-05-06)
 
 ### Features
