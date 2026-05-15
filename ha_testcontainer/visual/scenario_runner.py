@@ -2005,7 +2005,7 @@ def capture_doc_animation(
             _inject_click_circle(page)
         n: int = seg.get("frames", 10)
         for i in range(n):
-            frame_images.append(take_frame(fixed_clip))
+            raw_frame_images.append(take_frame(fixed_clip))
             if i < n - 1:
                 page.wait_for_timeout(interval_ms)
 
@@ -2019,7 +2019,7 @@ def capture_doc_animation(
 
     # --- capture frames ---
     # Each frame is an Image.Image object (PIL dynamically imported above).
-    frame_images: list[Any] = []
+    raw_frame_images: list[Any] = []
 
     segments = doc_animation.get("segments")
     if segments is not None:
@@ -2038,7 +2038,7 @@ def capture_doc_animation(
         if cursor_type:
             _inject_cursor(page, cursor_type)
         for i in range(frame_count):
-            frame_images.append(take_frame(clip))
+            raw_frame_images.append(take_frame(clip))
             if i < frame_count - 1:
                 page.wait_for_timeout(interval_ms)
 
@@ -2047,6 +2047,22 @@ def capture_doc_animation(
     # are no-ops when no overlay element exists.
     _remove_cursor(page)
     _remove_click_circle(page)
+
+    # --- normalise frame sizes ---
+    # When viewport size changes within one animation, later screenshots may be
+    # smaller than earlier ones.  Composite every frame onto a fixed-size canvas
+    # so uncovered regions are explicitly cleared and no stale pixels bleed
+    # through during GIF playback.
+    max_w = max(f.size[0] for f in raw_frame_images)
+    max_h = max(f.size[1] for f in raw_frame_images)
+    frame_images: list[Any] = []
+    for f in raw_frame_images:
+        if f.size == (max_w, max_h):
+            frame_images.append(f)
+            continue
+        canvas = Image.new("RGBA", (max_w, max_h), (255, 255, 255, 255))
+        canvas.paste(f, (0, 0))
+        frame_images.append(canvas)
 
     # --- assemble GIF ---
     # Build a global palette by stacking all frames vertically into one image
@@ -2075,6 +2091,7 @@ def capture_doc_animation(
         loop=0,
         duration=interval_ms,
         optimize=False,
+        disposal=2,
     )
     actual_gif = gif_buf.getvalue()
 
