@@ -169,6 +169,24 @@ wait
           - type: wait
             ms: 1000
 
+set_viewport
+    Resize the browser viewport to the given *width* and *height* (in CSS
+    pixels) using Playwright's ``page.set_viewport_size``.  Use this to
+    simulate responsive breakpoints or to show how a card or animation
+    adapts to different screen sizes.
+
+    ``settle_ms`` (default 0) is an optional pause after the resize so that
+    CSS transitions or layout recalculations can complete before the next
+    interaction or assertion runs.
+
+    .. code-block:: yaml
+
+        interactions:
+          - type: set_viewport
+            width: 375
+            height: 812
+            settle_ms: 300   # optional, default 0
+
 Custom interaction types
     Register your own interaction types with :func:`register_interaction_type`.
     For example, the UIX extension module (``ha-tests/uix/extensions.py``)
@@ -993,6 +1011,8 @@ def run_interactions(
             _write_config_file(ha, interaction)
         elif itype == "wait":
             page.wait_for_timeout(interaction.get("ms", 500))
+        elif itype == "set_viewport":
+            _perform_set_viewport(page, interaction)
         elif itype in _interaction_extensions:
             _interaction_extensions[itype](page, interaction, ha=ha)
         else:
@@ -1031,6 +1051,22 @@ def _perform_hover_away(page: Page, interaction: dict[str, Any]) -> None:
     settle_ms: int = interaction.get("settle_ms", 500)
     page.mouse.move(0, 0)
     page.wait_for_timeout(settle_ms)
+
+
+def _perform_set_viewport(page: Page, interaction: dict[str, Any]) -> None:
+    """Resize the browser viewport to the given *width* and *height*.
+
+    Calls Playwright's ``page.set_viewport_size`` then waits ``settle_ms``
+    milliseconds (default 0) for CSS transitions or layout recalculations to
+    complete.
+    """
+    __tracebackhide__ = True
+    width: int = int(interaction["width"])
+    height: int = int(interaction["height"])
+    settle_ms: int = interaction.get("settle_ms", 0)
+    page.set_viewport_size({"width": width, "height": height})
+    if settle_ms:
+        page.wait_for_timeout(settle_ms)
 
 
 def _perform_click(page: Page, interaction: dict[str, Any]) -> None:
