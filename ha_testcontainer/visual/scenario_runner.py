@@ -2051,6 +2051,12 @@ def capture_doc_animation(
     _remove_cursor(page)
     _remove_click_circle(page)
 
+    if not raw_frame_images:
+        raise AssertionError(
+            f"Doc animation '{doc_animation['output']}': captured 0 frames. "
+            "Set frames > 0 (or at least one segment with frames > 0)."
+        )
+
     # --- normalize frame sizes ---
     # When viewport size changes within one animation, later screenshots may be
     # smaller than earlier ones.  Composite every frame onto a fixed-size canvas

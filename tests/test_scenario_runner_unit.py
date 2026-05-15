@@ -210,3 +210,18 @@ class TestDocAnimationViewportNormalization:
         # (7,5) is outside both smaller later frames and must be white.
         assert frames[1].getpixel((7, 5)) == (255, 255, 255)
         assert frames[2].getpixel((7, 5)) == (255, 255, 255)
+
+    def test_raises_when_no_frames_captured(self, tmp_path, monkeypatch):
+        page = _make_page()
+        monkeypatch.setattr(sr, "REPO_ROOT", tmp_path)
+        monkeypatch.setenv("DOC_IMAGE_UPDATE", "1")
+
+        scenario = {
+            "doc_animation": {
+                "output": "docs/assets/no-frames.gif",
+                "frames": 0,
+            }
+        }
+
+        with pytest.raises(AssertionError, match="captured 0 frames"):
+            sr.capture_doc_animation(page, scenario)
