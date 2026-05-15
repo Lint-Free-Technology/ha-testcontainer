@@ -2,6 +2,59 @@
 
 <!-- version list -->
 
+## v2.3.0 (2026-05-15)
+
+### Bug Fixes
+
+- Guard doc_animation against zero captured frames
+  ([#17](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/17),
+  [`450f13a`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/450f13a330f41448c774282de8eaa424ed2069fa))
+
+- Normalize doc_animation frames across viewport changes
+  ([#17](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/17),
+  [`450f13a`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/450f13a330f41448c774282de8eaa424ed2069fa))
+
+### Chores
+
+- Address final review nits for doc animation tests
+  ([#17](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/17),
+  [`450f13a`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/450f13a330f41448c774282de8eaa424ed2069fa))
+
+- Finalize doc_animation ghost-frame fix polish
+  ([#17](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/17),
+  [`450f13a`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/450f13a330f41448c774282de8eaa424ed2069fa))
+
+- Finalize style nits for doc animation fix
+  ([#17](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/17),
+  [`450f13a`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/450f13a330f41448c774282de8eaa424ed2069fa))
+
+- Start doc_animation viewport ghost-frame fix
+  ([#17](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/17),
+  [`450f13a`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/450f13a330f41448c774282de8eaa424ed2069fa))
+
+### Documentation
+
+- Add set_viewport interaction to README_SCENARIOS.md
+  ([#16](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/16),
+  [`74043ad`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/74043ada7a1765dd0e2f86447b9c9d5a9d7ee928))
+
+### Features
+
+- Normalize doc_animation frames across viewport changes to eliminate GIF ghosting
+  ([#17](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/17),
+  [`450f13a`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/450f13a330f41448c774282de8eaa424ed2069fa))
+
+### Testing
+
+- Address review feedback in doc_animation regression tests
+  ([#17](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/17),
+  [`450f13a`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/450f13a330f41448c774282de8eaa424ed2069fa))
+
+- Simplify mixed segment viewport regression case
+  ([#17](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/17),
+  [`450f13a`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/450f13a330f41448c774282de8eaa424ed2069fa))
+
+
 ## v2.2.0 (2026-05-15)
 
 ### Documentation
