@@ -524,7 +524,7 @@ REPO_ROOT: Path = Path.cwd()
 # They participate in ``test_doc_images.py`` but not in ``test_scenarios.py``.
 DOCS_SCENARIOS_DIR: Path = REPO_ROOT / "docs" / "scenarios"
 
-# Background colour for normalized doc_animation canvases.
+# Background color for normalized doc_animation canvases.
 CANVAS_BACKGROUND_RGBA: tuple[int, int, int, int] = (255, 255, 255, 255)
 
 # ---------------------------------------------------------------------------

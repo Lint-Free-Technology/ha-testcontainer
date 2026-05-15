@@ -95,7 +95,7 @@ def _png_bytes(width: int, height: int, color: tuple[int, int, int]) -> bytes:
 
 
 def _read_gif_frames(path) -> list[Image.Image]:
-    """Return GIF frames as RGB images."""
+    """Return frames from the GIF at *path* as per-frame RGB Pillow images."""
     with Image.open(path) as gif:
         if gif.format != "GIF":
             raise ValueError(f"Expected GIF file, got: {gif.format}")
