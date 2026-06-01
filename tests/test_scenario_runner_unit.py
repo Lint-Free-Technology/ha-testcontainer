@@ -211,6 +211,49 @@ class TestDocAnimationViewportNormalization:
         assert frames[1].getpixel((7, 5)) == (255, 255, 255)
         assert frames[2].getpixel((7, 5)) == (255, 255, 255)
 
+    def test_root_clip_is_recomputed_for_each_frame(self, tmp_path, monkeypatch):
+        page = _make_page()
+        page.screenshot.side_effect = [
+            _png_bytes(4, 3, (255, 0, 0)),
+            _png_bytes(8, 6, (0, 255, 0)),
+        ]
+
+        get_rect = MagicMock(
+            side_effect=[
+                {"x": 10, "y": 20, "w": 4, "h": 3},
+                {"x": 10, "y": 20, "w": 8, "h": 6},
+            ]
+        )
+        monkeypatch.setattr(sr, "_get_doc_image_rect", get_rect)
+        monkeypatch.setattr(sr, "REPO_ROOT", tmp_path)
+        monkeypatch.setenv("DOC_IMAGE_UPDATE", "1")
+
+        scenario = {
+            "doc_animation": {
+                "output": "docs/assets/root-expands.gif",
+                "root": "$card",
+                "interval_ms": 1,
+                "dither": False,
+                "frames": 2,
+            }
+        }
+
+        sr.capture_doc_animation(page, scenario)
+
+        assert get_rect.call_count == 2
+        assert page.screenshot.call_args_list[0].kwargs["clip"] == {
+            "x": 10,
+            "y": 20,
+            "width": 4,
+            "height": 3,
+        }
+        assert page.screenshot.call_args_list[1].kwargs["clip"] == {
+            "x": 10,
+            "y": 20,
+            "width": 8,
+            "height": 6,
+        }
+
     def test_raises_when_no_frames_captured(self, tmp_path, monkeypatch):
         page = _make_page()
         monkeypatch.setattr(sr, "REPO_ROOT", tmp_path)
