@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v2.4.0 (2026-06-01)
+
+### Chores
+
+- **deps**: Bump pypa/gh-action-pypi-publish in /.github/workflows
+  ([#15](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/15),
+  [`a5269f7`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/a5269f75415c6d27cd2c72492d4cd660a56ebf6f))
+
+### Features
+
+- Recompute animation root bounds per frame
+  ([#18](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/18),
+  [`07f29d1`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/07f29d1a9233e00ca5a988e7848d1063270ef18e))
+
+
 ## v2.3.0 (2026-05-15)
 
 ### Bug Fixes
