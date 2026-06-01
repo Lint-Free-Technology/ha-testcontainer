@@ -338,11 +338,8 @@ doc_animation:
       frames: 8
 ```
 
-The crop area (`root` + `padding`) is **locked** to the element's dimensions
-after the first segment's interactions settle.  All frames — including those
-from subsequent segments — share the same pixel dimensions, even if the
-element changes size between segments (e.g. a conditional card row appearing
-or disappearing).
+The crop area (`root` + `padding`) is **updated** to the root element's dimensions
+on each animation frame after interaction settle time. The animation will have dimensions of the largest frame.
 
 Each segment can also override the top-level `cursor:` key and declare
 `click_circle: true` (see [Cursor and click-circle overlays](#cursor-and-click-circle-overlays)).
