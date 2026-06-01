@@ -1957,7 +1957,7 @@ def capture_doc_animation(
         }
 
     def take_frame(clip: dict[str, float] | None) -> Any:
-        """Capture one animation frame using a pre-computed *clip* rect."""
+        """Capture one animation frame using the provided *clip* rect."""
         __tracebackhide__ = True
         png_bytes = (
             page.screenshot(clip=clip, full_page=False, scale=scale)
@@ -1969,21 +1969,11 @@ def capture_doc_animation(
         # does not affect visual output.
         return Image.open(io.BytesIO(png_bytes)).convert("RGBA")
 
-    # fixed_clip is measured once after the first segment's interactions settle
-    # so that all frames share the same crop dimensions even when the captured
-    # element changes size between segments (e.g. a conditional card row).
-    fixed_clip: dict[str, float] | None = None
-
     def capture_segment(seg: dict[str, Any]) -> None:
         """Run a segment's optional interactions then capture its frames."""
         __tracebackhide__ = True
-        nonlocal fixed_clip
         if "interactions" in seg:
             run_interactions(page, seg, ha=ha)
-        # Lock the clip to the first segment's dimensions so every frame in the
-        # GIF is the same size, regardless of how later segments affect the DOM.
-        if fixed_clip is None:
-            fixed_clip = _compute_clip()
         # Determine the effective cursor for this segment.  A "cursor" key on
         # the segment overrides the top-level cursor_type.  Setting it to
         # null (``cursor: none`` in YAML) or the string ``"none"`` explicitly
@@ -2008,7 +1998,7 @@ def capture_doc_animation(
             _inject_click_circle(page)
         n: int = seg.get("frames", 10)
         for i in range(n):
-            raw_frame_images.append(take_frame(fixed_clip))
+            raw_frame_images.append(take_frame(_compute_clip()))
             if i < n - 1:
                 page.wait_for_timeout(interval_ms)
 
@@ -2027,7 +2017,6 @@ def capture_doc_animation(
     segments = doc_animation.get("segments")
     if segments is not None:
         # Segmented mode: interactions are interspersed between groups of frames.
-        # The clip is locked to the first segment's dimensions (see capture_segment).
         for idx, segment in enumerate(segments):
             capture_segment(segment)
             if idx < len(segments) - 1:
@@ -2037,11 +2026,10 @@ def capture_doc_animation(
         frame_count: int = doc_animation.get("frames", 10)
         if "interactions" in doc_animation:
             run_interactions(page, doc_animation, ha=ha)
-        clip = _compute_clip()
         if cursor_type:
             _inject_cursor(page, cursor_type)
         for i in range(frame_count):
-            raw_frame_images.append(take_frame(clip))
+            raw_frame_images.append(take_frame(_compute_clip()))
             if i < frame_count - 1:
                 page.wait_for_timeout(interval_ms)
 
