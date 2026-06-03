@@ -20,6 +20,9 @@ HA_EXTRA_CONFIG_DIR
 HA_PLUGINS_YAML
     Path to an alternative ``plugins.yaml``.
     Replaces the old ``LOVELACE_PLUGINS_YAML`` variable.
+HA_INTEGRATIONS_YAML
+    Path to an ``integrations.yaml`` file listing integrations to download and
+    configure via config-flow.
 """
 
 from __future__ import annotations
@@ -43,4 +46,3 @@ _sr.SCENARIOS_DIR = Path(__file__).parent / "visual" / "scenarios"
 _sr.SNAPSHOTS_DIR = Path(__file__).parent / "visual" / "snapshots"
 _sr.REPO_ROOT = Path(__file__).parent.parent
 _sr.DOCS_SCENARIOS_DIR = _sr.REPO_ROOT / "docs" / "scenarios"
-

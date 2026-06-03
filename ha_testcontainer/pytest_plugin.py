@@ -44,6 +44,9 @@ HA_LOCAL_PLUGINS_DIR
     Path to a directory containing local ``.js`` plugin files to copy into
     ``www/`` and register as Lovelace resources.  Use this to serve your own
     dashboard plugin from the local repository without publishing a release.
+HA_INTEGRATIONS_YAML
+    Path to an ``integrations.yaml`` file listing integrations to download into
+    ``custom_components`` and configure via config-flow.
 HA_SETUP_INTEGRATION
     Integration domain to configure via the config-flow API after startup
     (e.g. ``uix``).  Leave unset to skip.
@@ -62,6 +65,7 @@ import pytest
 import requests
 import websocket
 from ha_testcontainer import HATestContainer, HAVersion
+from ha_testcontainer.integrations import install_integrations
 from ha_testcontainer.plugins import download_lovelace_plugins
 from ha_testcontainer.visual import PAGE_LOAD_TIMEOUT, inject_ha_token
 
@@ -199,22 +203,52 @@ def ha(ha_version: str, tmp_path_factory):
         config_path=ha_tmp,
     )
 
-    # Mount local custom_components (HA_CUSTOM_COMPONENTS_PATH).
+    # Prepare custom_components from local path and/or integrations.yaml.
     custom_components_env = os.environ.get("HA_CUSTOM_COMPONENTS_PATH", "").strip()
-    if custom_components_env:
+    integrations_yaml_env = os.environ.get("HA_INTEGRATIONS_YAML", "").strip()
+    integration_domains_from_yaml: list[str] = []
+    custom_components_mount_dir: Path | None = None
+    if integrations_yaml_env:
+        merged_cc_dir = tmp_path_factory.mktemp("ha-custom-components")
+        if custom_components_env:
+            custom_components_dir = Path(custom_components_env)
+            if custom_components_dir.exists():
+                shutil.copytree(
+                    str(custom_components_dir),
+                    str(merged_cc_dir),
+                    dirs_exist_ok=True,
+                )
+        integration_domains_from_yaml = install_integrations(
+            merged_cc_dir,
+            integrations_yaml=Path(integrations_yaml_env),
+        )
+        if any(merged_cc_dir.iterdir()):
+            custom_components_mount_dir = merged_cc_dir
+    elif custom_components_env:
         custom_components_dir = Path(custom_components_env)
         if custom_components_dir.exists() and any(custom_components_dir.iterdir()):
-            container.with_volume_mapping(
-                str(custom_components_dir.resolve()),
-                "/config/custom_components",
-                "rw",
-            )
+            custom_components_mount_dir = custom_components_dir.resolve()
+
+    if custom_components_mount_dir is not None:
+        container.with_volume_mapping(
+            str(custom_components_mount_dir),
+            "/config/custom_components",
+            "rw",
+        )
 
     container.start()
 
     integration = os.environ.get("HA_SETUP_INTEGRATION", "").strip()
+    domains: list[str] = []
     if integration:
-        container.setup_integration(integration)
+        domains.append(integration)
+    domains.extend(integration_domains_from_yaml)
+    seen_domains: set[str] = set()
+    for domain in domains:
+        if domain in seen_domains:
+            continue
+        seen_domains.add(domain)
+        container.setup_integration(domain)
 
     yield container
     container.stop()

@@ -131,6 +131,7 @@ Configure the plugin with environment variables:
 | `HA_CONFIG_PATH` | _(none)_ | Host config dir mounted as `/config` |
 | `HA_CUSTOM_COMPONENTS_PATH` | _(none)_ | Host dir mounted as `/config/custom_components` |
 | `HA_SETUP_INTEGRATION` | _(none)_ | Integration domain to configure via config-flow |
+| `HA_INTEGRATIONS_YAML` | _(none)_ | Path to an `integrations.yaml` file; each entry downloads a custom integration and runs config-flow |
 | `HA_EXTRA_CONFIG_DIR` | _(none)_ | Directory merged on top of `HA_CONFIG_PATH` |
 | `HA_PLUGINS_YAML` | _(none)_ | Path to a `plugins.yaml` listing Lovelace plugins |
 | `HA_URL` + `HA_TOKEN` | _(none)_ | Connect to a pre-running HA instance instead of Docker |
@@ -288,8 +289,17 @@ HA_VERSION=2024.6.0 make test
 | `HA_CONFIG_PATH` | `ha-config/` | Host dir mounted as `/config` |
 | `HA_CUSTOM_COMPONENTS_PATH` | `custom_components/` | Host dir mounted as `/config/custom_components` |
 | `HA_SETUP_INTEGRATION` | _(unset)_ | Integration domain to configure via config-flow |
+| `HA_INTEGRATIONS_YAML` | _(unset)_ | Path to an `integrations.yaml` file; each entry downloads a custom integration and runs config-flow |
 | `HA_EXTRA_CONFIG_DIR` | _(unset)_ | Directory merged on top of `HA_CONFIG_PATH` before start |
 | `HA_PLUGINS_YAML` | _(unset)_ | Path to a `plugins.yaml` listing Lovelace plugins to download |
+
+`HA_INTEGRATIONS_YAML` file format:
+
+```yaml
+- repo: Lint-Free-Technology/uix
+  domain: uix
+  version: 5.3.1   # optional; latest release is used when omitted
+```
 
 ---
 
