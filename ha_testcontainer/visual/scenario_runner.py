@@ -189,9 +189,8 @@ set_viewport
 
 Custom interaction types
     Register your own interaction types with :func:`register_interaction_type`.
-    For example, the UIX extension module (``ha-tests/uix/extensions.py``)
-    registers ``add_foundry``, ``delete_foundry``, ``add_foundry_file``,
-    ``remove_foundry_file``, and ``reload_foundry_files`` this way.
+    Component-specific extension modules can register custom interactions
+    without modifying the core scenario runner.
 
 Assertion types
 ---------------

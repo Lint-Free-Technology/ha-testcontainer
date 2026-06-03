@@ -4,16 +4,6 @@ Visual and integration tests for Home Assistant custom components using
 [ha-testcontainer](https://github.com/Lint-Free-Technology/ha-testcontainer)
 and [Playwright](https://playwright.dev/python/).
 
-These test scripts were migrated from
-[Lint-Free-Technology/uix](https://github.com/Lint-Free-Technology/uix/tree/main/tests)
-and are designed to be reusable by **any** custom component author, not just UIX.
-
-> **`ha-tests/uix/` is temporary.**
-> That subdirectory is a migration parking lot — the UIX-specific extensions
-> and config files it contains will move to the UIX repo in a follow-up PR, and
-> `ha-tests/uix/` will then be deleted from ha-testcontainer.
-> See [`ha-tests/uix/README.md`](uix/README.md) for the migration plan.
-
 ---
 
 ## Directory layout
@@ -39,23 +29,9 @@ ha-tests/
 │   ├── scenario_runner.py       # YAML-driven scenario engine (extensible)
 │   ├── test_scenarios.py        # parametrised runner for visual/scenarios/*.yaml
 │   ├── test_doc_images.py       # doc PNG/GIF generation and verification
-│   ├── test_uix_styling.py      # UIX smoke tests (parked — see note below)
 │   ├── scenarios/               # add your YAML scenario files here
 │   └── snapshots/               # baseline PNGs (committed); *.actual.png (gitignored)
-└── uix/                         # ⚠ PARKED — will be deleted once UIX repo picks this up
-    ├── README.md                # migration instructions for UIX repo
-    ├── extensions.py            # UIX interaction handlers (add_foundry etc.)
-    ├── plugins.yaml             # UIX-specific plugin list
-    └── ha-config/               # UIX-specific HA config additions
 ```
-
-### Generic vs UIX-specific
-
-| What | Status |
-|------|--------|
-| Everything in `ha-tests/` except `uix/` and `visual/test_uix_styling.py` | **Permanent** — generic framework for any component |
-| `ha-tests/uix/` | **Temporary** — parked for UIX repo pickup, then deleted |
-| `ha-tests/visual/test_uix_styling.py` | **Temporary** — UIX smoke tests, moves to UIX repo |
 
 ---
 
@@ -133,7 +109,7 @@ pytest ha-tests/visual/test_scenarios.py -k my_scenario_id -v
 | `HA_TOKEN` | *(not set)* | Long-lived access token for the pre-running instance |
 | `LOVELACE_SETUP_INTEGRATION` | *(empty)* | Integration domain to auto-configure on container startup, e.g. `uix` |
 | `LOVELACE_EXTRA_CONFIG_DIR` | *(empty)* | Path to a directory whose contents are merged on top of `ha-tests/ha-config/` before the container starts — use this to inject component-specific themes, foundries, etc. |
-| `LOVELACE_PLUGINS_YAML` | *(empty)* | Path to an alternative `plugins.yaml` (e.g. `ha-tests/uix/plugins.yaml` for UIX). When set, this file is used **instead of** `ha-tests/plugins.yaml` |
+| `LOVELACE_PLUGINS_YAML` | *(empty)* | Path to an alternative `plugins.yaml`. When set, this file is used **instead of** `ha-tests/plugins.yaml` |
 | `SNAPSHOT_UPDATE` | `0` | Set to `1` to create/overwrite snapshot baselines |
 | `DOC_IMAGE_UPDATE` | `0` | Set to `1` to regenerate all doc images |
 | `DOCS_SOURCE_DIR` | `docs/source/` | Override the docs directory scanned by `test_doc_audit.py` |
@@ -148,7 +124,7 @@ Start HA once and re-run pytest instantly — no Docker startup overhead:
 ```bash
 # Terminal 1 — keep running
 make ha-tests-up
-# or: LOVELACE_SETUP_INTEGRATION=uix python ha-tests/ha_server.py
+# or: python ha-tests/ha_server.py
 
 # Terminal 2 — iterate quickly
 source .ha_env
@@ -203,11 +179,6 @@ setup:
   - type: my_action
     param: some_value
 ```
-
-See `ha-tests/uix/extensions.py` for a complete example of how UIX
-registers its foundry interaction types.
-
----
 
 ## Adding scenarios
 
@@ -275,32 +246,7 @@ modifying the generic files, point `LOVELACE_EXTRA_CONFIG_DIR` at a directory
 that will be merged on top:
 
 ```bash
-LOVELACE_EXTRA_CONFIG_DIR=ha-tests/uix/ha-config pytest ha-tests/visual/ -v
+LOVELACE_EXTRA_CONFIG_DIR=path/to/your/ha-config pytest ha-tests/visual/ -v
 ```
-
----
-
-## Follow-up work
-
-### UIX repo (follow-up PR)
-
-See **[`ha-tests/uix/README.md`](uix/README.md)** for step-by-step instructions.
-In summary:
-
-1. Copy `ha-tests/uix/extensions.py` → `tests/visual/uix_extensions.py`
-2. Merge `ha-tests/uix/ha-config/` → `tests/ha-config/`
-3. Copy `ha-tests/uix/plugins.yaml` → `tests/plugins.yaml`
-4. Import `uix_extensions` in `tests/conftest.py`
-5. Set `LOVELACE_SETUP_INTEGRATION=uix` and `LOVELACE_EXTRA_CONFIG_DIR=tests/ha-config`
-6. Remove the old duplicated Python files from `tests/`
-7. Open a cleanup PR in this repo deleting `ha-tests/uix/`
-
-### ha-testcontainer cleanup PR (after UIX PR lands)
-
-```bash
-git rm -r ha-tests/uix/ ha-tests/visual/test_uix_styling.py
-git commit -m "chore: remove parked UIX migration artifacts"
-```
-
 
 ---
