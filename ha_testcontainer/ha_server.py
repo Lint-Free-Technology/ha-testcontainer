@@ -95,6 +95,7 @@ def main() -> None:
     import tempfile
 
     ha_tmp = Path(tempfile.mkdtemp(prefix="ha-state-"))
+    temp_dirs_to_cleanup: list[Path] = [ha_tmp]
 
     if ha_config_dir.exists():
         shutil.copytree(str(ha_config_dir), str(ha_tmp), dirs_exist_ok=True)
@@ -119,13 +120,14 @@ def main() -> None:
     custom_components_mount_dir: Path | None = None
     if integrations_yaml_env:
         merged_cc_dir = Path(tempfile.mkdtemp(prefix="ha-custom-components-"))
+        temp_dirs_to_cleanup.append(merged_cc_dir)
         if custom_components_dir.exists():
             shutil.copytree(str(custom_components_dir), str(merged_cc_dir), dirs_exist_ok=True)
         integration_domains_from_yaml = install_integrations(
             merged_cc_dir,
             integrations_yaml=Path(integrations_yaml_env),
         )
-        if any(merged_cc_dir.iterdir()):
+        if integration_domains_from_yaml or any(merged_cc_dir.iterdir()):
             custom_components_mount_dir = merged_cc_dir
     elif custom_components_dir.exists() and any(custom_components_dir.iterdir()):
         custom_components_mount_dir = custom_components_dir.resolve()
@@ -189,7 +191,8 @@ def main() -> None:
         except Exception:  # noqa: BLE001
             pass
         env_file.unlink(missing_ok=True)
-        shutil.rmtree(ha_tmp, ignore_errors=True)
+        for temp_dir in temp_dirs_to_cleanup:
+            shutil.rmtree(temp_dir, ignore_errors=True)
         sys.exit(0)
 
     signal.signal(signal.SIGINT, _shutdown)

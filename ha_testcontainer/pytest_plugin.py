@@ -222,7 +222,7 @@ def ha(ha_version: str, tmp_path_factory):
             merged_cc_dir,
             integrations_yaml=Path(integrations_yaml_env),
         )
-        if any(merged_cc_dir.iterdir()):
+        if integration_domains_from_yaml or any(merged_cc_dir.iterdir()):
             custom_components_mount_dir = merged_cc_dir
     elif custom_components_env:
         custom_components_dir = Path(custom_components_env)

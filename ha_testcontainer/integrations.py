@@ -20,6 +20,7 @@ import yaml
 _GITHUB_API = "https://api.github.com"
 _ARCHIVE_BASE = "https://github.com"
 _TIMEOUT = 30
+_ARCHIVE_TIMEOUT = 60
 
 # Matches "owner/repo" where both parts are valid GitHub name segments.
 _REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -144,7 +145,7 @@ def _extract_custom_components(
     tag: str,
 ) -> set[str]:
     try:
-        resp = requests.get(archive_url, timeout=60, headers=_github_headers())
+        resp = requests.get(archive_url, timeout=_ARCHIVE_TIMEOUT, headers=_github_headers())
         resp.raise_for_status()
     except requests.RequestException as exc:
         raise RuntimeError(
