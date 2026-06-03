@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v2.5.1 (2026-06-03)
+
+### Bug Fixes
+
+- Upgrade workflow actions for Node 24 compatibility
+  ([#20](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/20),
+  [`0835f2b`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/0835f2b2426646e20e0c9f79412be0fcfa478a8d))
+
+
 ## v2.5.0 (2026-06-03)
 
 ### Bug Fixes
