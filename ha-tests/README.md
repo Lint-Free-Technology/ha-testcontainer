@@ -4,10 +4,6 @@ Visual and integration tests for Home Assistant custom components using
 [ha-testcontainer](https://github.com/Lint-Free-Technology/ha-testcontainer)
 and [Playwright](https://playwright.dev/python/).
 
-These test scripts were migrated from
-[Lint-Free-Technology/uix](https://github.com/Lint-Free-Technology/uix/tree/main/tests)
-and are designed to be reusable by **any** custom component author.
-
 ---
 
 ## Directory layout
