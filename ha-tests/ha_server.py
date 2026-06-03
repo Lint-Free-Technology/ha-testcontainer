@@ -20,8 +20,8 @@ HA_CUSTOM_COMPONENTS_PATH
 HA_PLUGINS_YAML
     Defaults to ``ha-tests/plugins.yaml``.
 
-All other env vars (HA_VERSION, HA_SETUP_INTEGRATION, HA_EXTRA_CONFIG_DIR,
-HA_URL, HA_TOKEN) are passed through unchanged.
+All other env vars (HA_VERSION, HA_SETUP_INTEGRATION, HA_INTEGRATIONS_YAML,
+HA_EXTRA_CONFIG_DIR, HA_URL, HA_TOKEN) are passed through unchanged.
 """
 
 from __future__ import annotations
@@ -40,4 +40,3 @@ from ha_testcontainer.ha_server import main  # noqa: E402
 
 if __name__ == "__main__":
     main()
-
