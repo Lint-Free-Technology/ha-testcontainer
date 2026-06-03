@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v2.5.0 (2026-06-03)
+
+### Bug Fixes
+
+- Polish integration yaml startup handling
+  ([#19](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/19),
+  [`b652eb4`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/b652eb43532004d927b79e42382bd939bb9a073d))
+
+### Chores
+
+- **docs**: Change crop area behavior from locked to updated
+  ([`eb139f5`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/eb139f587775a2cfa62b30df8c4e373f53869513))
+
+### Features
+
+- Add integrations yaml installer
+  ([#19](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/19),
+  [`b652eb4`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/b652eb43532004d927b79e42382bd939bb9a073d))
+
+- Add YAML-driven integration provisioning for HA test startup
+  ([#19](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/19),
+  [`b652eb4`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/b652eb43532004d927b79e42382bd939bb9a073d))
+
+
 ## v2.4.0 (2026-06-01)
 
 ### Chores
