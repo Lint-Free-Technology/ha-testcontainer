@@ -11,4 +11,7 @@
 # - repo: Lint-Free-Technology/uix
 #   domain: uix
 #   version: 5.3.1
+#
+# Keep this trailing [] when there are no entries so the file remains a valid
+# YAML list for HA_INTEGRATIONS_YAML.
 []
