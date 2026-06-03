@@ -1,0 +1,17 @@
+# Integrations to auto-download into custom_components/ and optionally configure
+# via config-flow when running ha-tests.
+#
+# Point HA_INTEGRATIONS_YAML at this file (or your own) to enable this workflow.
+# Each entry supports:
+#   repo    - GitHub repository in "owner/name" format (required)
+#   domain  - integration domain to configure after install (optional)
+#   version - release tag/version to install (optional; latest when omitted)
+#
+# Example:
+# - repo: Lint-Free-Technology/uix
+#   domain: uix
+#   version: 5.3.1
+#
+# Keep this trailing [] when there are no entries so the file remains a valid
+# YAML list for HA_INTEGRATIONS_YAML.
+[]

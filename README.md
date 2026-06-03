@@ -335,6 +335,7 @@ ha-testcontainer/
 │   ├── ha_server.py              # shim → ha_testcontainer.ha_server
 │   ├── plugins.py                # shim → ha_testcontainer.plugins
 │   ├── plugins.yaml              # Lovelace plugin registry for ha-tests/
+│   ├── integrations.yaml         # integration registry for HA_INTEGRATIONS_YAML
 │   ├── ha-config/                # HA config for the ha-tests/ suite
 │   └── visual/
 │       ├── conftest.py           # shim (fixtures come from the pytest plugin)
