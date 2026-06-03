@@ -13,7 +13,7 @@ COMPONENT ?=
 #   HA_SETUP_INTEGRATION — integration domain to auto-configure (e.g. uix)
 #   HA_INTEGRATIONS_YAML — integrations.yaml to auto-download integrations + setup flows
 #   HA_EXTRA_CONFIG_DIR  — component-specific ha-config additions to merge
-#   HA_PLUGINS_YAML      — alternative plugins.yaml (e.g. ha-tests/uix/plugins.yaml)
+#   HA_PLUGINS_YAML      — alternative plugins.yaml path
 HA_SETUP_INTEGRATION ?=
 HA_INTEGRATIONS_YAML ?=
 HA_EXTRA_CONFIG_DIR ?=
@@ -79,12 +79,6 @@ update-snapshots:
 # These targets run the ha-tests/ suite.  Consumers can pass Make variables
 # to customise the environment (see top of Makefile for variable docs).
 #
-# UIX example:
-#   make ha-tests-up \
-#     HA_SETUP_INTEGRATION=uix \
-#     HA_EXTRA_CONFIG_DIR=ha-tests/uix/ha-config \
-#     HA_PLUGINS_YAML=ha-tests/uix/plugins.yaml
-
 _HA_TESTS_ENV = \
   $(if $(HA_SETUP_INTEGRATION),HA_SETUP_INTEGRATION=$(HA_SETUP_INTEGRATION)) \
   $(if $(HA_INTEGRATIONS_YAML),HA_INTEGRATIONS_YAML=$(HA_INTEGRATIONS_YAML)) \

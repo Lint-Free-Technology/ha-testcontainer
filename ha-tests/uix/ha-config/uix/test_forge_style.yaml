@@ -1,3 +1,0 @@
-style:
-  .: "ha-card { background: rgb(0, 100, 200) !important; }"
-  "ha-tile-container $": !include test_tile_container.yaml

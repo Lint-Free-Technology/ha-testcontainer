@@ -118,8 +118,7 @@ def download_lovelace_plugins(
 
     The plugin list is read from *plugins_yaml* (defaults to
     ``ha-tests/plugins.yaml`` in the same directory as this module).  Pass an
-    explicit path to use a component-specific registry instead — for example
-    ``ha-tests/uix/plugins.yaml`` for UIX tests.
+    explicit path to use a component-specific registry instead.
 
     In addition to hosted (GitHub-released) plugins, the yaml file may contain
     entries with a ``local_path`` key that point to a JS file on disk.  Relative
