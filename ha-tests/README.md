@@ -24,6 +24,7 @@ ha-tests/
 ├── ha_server.py                 # persistent dev server (make ha-tests-up)
 ├── plugins.py                   # plugin downloader
 ├── plugins.yaml                 # empty plugin registry (add your own plugins here)
+├── integrations.yaml            # empty integration registry for HA_INTEGRATIONS_YAML
 ├── test_doc_audit.py            # doc-image audit test
 ├── doc-image-audit-exclusions.txt
 ├── ha-config/                   # generic HA config for the test container
@@ -66,6 +67,7 @@ ha-tests/
 | `ha_server.py` | Start a long-lived HA container once for rapid iterative development (`make ha-tests-up`) |
 | `plugins.py` | Download third-party Lovelace JS plugins (listed in `plugins.yaml`) into the HA container's `www/` directory |
 | `plugins.yaml` | Empty plugin registry — add the plugins your component needs |
+| `integrations.yaml` | Empty integration registry — use with `HA_INTEGRATIONS_YAML` to auto-install and optionally configure integrations |
 | `test_doc_audit.py` | Verify every PNG/GIF referenced in your docs is covered by a scenario or explicitly excluded |
 | `visual/conftest.py` | Playwright browser-context fixture pre-authenticated against HA |
 | `visual/lovelace_helpers.py` | WebSocket helper to push Lovelace config to a named dashboard |
