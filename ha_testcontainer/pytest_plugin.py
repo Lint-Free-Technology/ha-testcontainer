@@ -285,6 +285,8 @@ def _create_dashboard(ha, url_path: str, title: str) -> None:
     Any existing dashboard with the same ``url_path`` is silently ignored so
     the fixture is idempotent across sessions.
     """
+    if _dashboard_url_path_exists(ha, url_path):
+        return
     result: dict[str, Any] = {}
     exc_holder: list[BaseException] = []
 
@@ -320,6 +322,34 @@ def _create_dashboard(ha, url_path: str, title: str) -> None:
         )
         if not already_exists:
             raise RuntimeError(f"lovelace/dashboards/create failed: {result}")
+
+
+def _dashboard_url_path_exists(ha, url_path: str) -> bool:
+    """Return True when a Lovelace dashboard already uses *url_path*.
+
+    Home Assistant exposes the dashboard registry through the websocket API,
+    so checking first avoids triggering the duplicate-url error log when the
+    test dashboard has already been created by another session.
+    """
+    try:
+        response = ha._ws_call({"id": 1, "type": "config/lovelace/dashboards/list"})
+    except BaseException:  # noqa: BLE001
+        return False
+
+    if not isinstance(response, dict):
+        return False
+
+    dashboards = response.get("result", response)
+    if isinstance(dashboards, dict):
+        dashboards = dashboards.get("dashboards", dashboards.get("result", dashboards))
+
+    if not isinstance(dashboards, list):
+        return False
+
+    return any(
+        isinstance(dashboard, dict) and dashboard.get("url_path") == url_path
+        for dashboard in dashboards
+    )
 
 
 @pytest.fixture(scope="session")
