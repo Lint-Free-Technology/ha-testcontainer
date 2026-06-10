@@ -2,6 +2,50 @@
 
 <!-- version list -->
 
+## v2.5.2 (2026-06-10)
+
+### Bug Fixes
+
+- Avoid duplicate Lovelace dashboard creation which cause Home Assistant log errors
+  ([#24](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/24),
+  [`7f4b829`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/7f4b829bf5ecb8c5bcbe7251023accbd92aea2e4))
+
+### Chores
+
+- Bump upload-artifact to v5
+  ([#22](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/22),
+  [`0bd5e93`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/0bd5e933568b65d931d3e4db2b593a9ccaa03cb9))
+
+- Remove obsolete UIX parked artifacts from ha-tests
+  ([#21](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/21),
+  [`fae88d0`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/fae88d0b3ac459d6c23605748516120fcc677a9d))
+
+- Remove parked UIX test artifacts
+  ([#21](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/21),
+  [`fae88d0`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/fae88d0b3ac459d6c23605748516120fcc677a9d))
+
+- **docs**: Add `ha-tests/integrations.yaml` placeholder and document it in repo file trees
+  ([#23](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/23),
+  [`0066040`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/0066040a47d1d57806d4552234acb06d49304440))
+
+- **docs**: Update README to remove UIX reference and simplify version info
+  ([`b82ce1c`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/b82ce1c09df01e7e855c499ce7e7e2d6b759d54f))
+
+### Documentation
+
+- Add integrations.yaml placeholder to ha-tests
+  ([#23](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/23),
+  [`0066040`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/0066040a47d1d57806d4552234acb06d49304440))
+
+- Clarify empty integrations.yaml placeholder list
+  ([#23](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/23),
+  [`0066040`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/0066040a47d1d57806d4552234acb06d49304440))
+
+- Remove migrated-tests origin note from ha-tests README
+  ([#21](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/21),
+  [`fae88d0`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/fae88d0b3ac459d6c23605748516120fcc677a9d))
+
+
 ## v2.5.1 (2026-06-03)
 
 ### Bug Fixes
