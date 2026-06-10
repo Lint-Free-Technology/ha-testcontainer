@@ -332,7 +332,7 @@ def _dashboard_url_path_exists(ha, url_path: str) -> bool:
     test dashboard has already been created by another session.
     """
     try:
-        response = ha._ws_call({"id": 1, "type": "config/lovelace/dashboards/list"})
+        response = ha._ws_call({"id": 1, "type": "lovelace/dashboards/list"})
     except BaseException:  # noqa: BLE001
         return False
 
