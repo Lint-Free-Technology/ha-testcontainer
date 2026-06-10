@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.5.3 (2026-06-10)
+
+### Bug Fixes
+
+- Correct fix for not creating dashboard when already exists. Incorrect api call was used.
+  ([`97a24c6`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/97a24c67ada2014fb8bdb355e4571394bf93ed31))
+
+
 ## v2.5.2 (2026-06-10)
 
 ### Bug Fixes
