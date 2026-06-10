@@ -8,17 +8,13 @@ It handles all the plumbing — startup, programmatic onboarding, long-lived
 token creation, and custom component mounting — so your tests can focus on
 what matters.
 
-[UIX (UI eXtension)](https://github.com/Lint-Free-Technology/uix) is the
-primary consumer and uses this library as a replacement for its legacy local
-test stack.
-
 ---
 
 ## Features
 
 | Capability | Detail |
 |---|---|
-| **Version flexibility** | `stable`, `beta`, `dev`, or any pinned tag (`2024.6.0`) |
+| **Version flexibility** | `stable`, `beta` or any pinned tag (`2024.6.0`) |
 | **Automatic onboarding** | Creates an admin user and mints a long-lived API token with no manual interaction |
 | **Demo entities** | Built-in HA `demo` integration gives you lights, sensors, weather objects immediately |
 | **Custom config** | Mount any `configuration.yaml` tree via `config_path=` |
