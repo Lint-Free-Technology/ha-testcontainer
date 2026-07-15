@@ -464,20 +464,6 @@ They are skipped by default to avoid pulling large images on every run.
 
 ---
 
-
-
-UIX's `test/docker-compose.yaml` + `test/configuration.yaml` + `test/lovelace.yaml`
-are replaced by `make up` and UIX writing its own `tests/` using `HATestContainer`.
-
-1. Add `ha-testcontainer` as a dev dependency.
-2. Fetch UIX: `python scripts/fetch_component.py Lint-Free-Technology/uix`.
-3. Replace `docker compose -f test/docker-compose.yaml up` with `make up`.
-4. Copy `examples/test_custom_component.py` into UIX's `tests/visual/`, fill in
-   UIX-specific TODO values, and add UIX-specific test cases.
-5. Delete UIX's `test/` directory.
-
----
-
 ## License
 
 MIT — see [LICENSE](LICENSE).
