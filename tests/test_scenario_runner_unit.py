@@ -86,6 +86,82 @@ class TestSetViewportInteraction:
             sr.run_interactions(page, scenario)
 
 
+class TestInputTextInteraction:
+    """run_interactions dispatches input_text correctly."""
+
+    def test_input_text_with_selector(self):
+        page = _make_page()
+        scenario = {
+            "interactions": [
+                {
+                    "type": "input_text",
+                    "selector": "#input-id",
+                    "text": "Hello",
+                    "delay_ms": 150,
+                    "settle_ms": 400,
+                }
+            ]
+        }
+        sr.run_interactions(page, scenario)
+        page.locator.assert_called_once_with("#input-id")
+        page.locator("#input-id").click.assert_called_once()
+        page.keyboard.type.assert_called_once_with("Hello", delay=150)
+        page.wait_for_timeout.assert_called_once_with(400)
+
+    def test_input_text_defaults(self):
+        page = _make_page()
+        scenario = {
+            "interactions": [
+                {
+                    "type": "input_text",
+                    "selector": "#input-id",
+                    "text": "Hello",
+                }
+            ]
+        }
+        sr.run_interactions(page, scenario)
+        page.keyboard.type.assert_called_once_with("Hello", delay=100)
+        page.wait_for_timeout.assert_called_once_with(500)
+
+    def test_input_text_coerces_strings(self):
+        page = _make_page()
+        scenario = {
+            "interactions": [
+                {
+                    "type": "input_text",
+                    "selector": "#input-id",
+                    "text": "Hello",
+                    "delay_ms": "80",
+                    "settle_ms": "300",
+                }
+            ]
+        }
+        sr.run_interactions(page, scenario)
+        page.keyboard.type.assert_called_once_with("Hello", delay=80)
+        page.wait_for_timeout.assert_called_once_with(300)
+
+    def test_input_text_with_root(self, monkeypatch):
+        page = _make_page()
+        get_rect = MagicMock(return_value={"x": 10, "y": 20, "w": 30, "h": 40})
+        monkeypatch.setattr(sr, "_get_element_rect", get_rect)
+
+        scenario = {
+            "interactions": [
+                {
+                    "type": "input_text",
+                    "root": "my-root",
+                    "selector": "input",
+                    "text": "Hello",
+                }
+            ]
+        }
+        sr.run_interactions(page, scenario)
+        get_rect.assert_called_once_with(page, scenario["interactions"][0])
+        # Click should be called on the center: x + w/2 = 25, y + h/2 = 40
+        page.mouse.click.assert_called_once_with(25, 40)
+        page.keyboard.type.assert_called_once_with("Hello", delay=100)
+
+
 def _png_bytes(width: int, height: int, color: tuple[int, int, int]) -> bytes:
     """Return an in-memory PNG of the requested size and solid RGB color."""
     img = Image.new("RGB", (width, height), color)

@@ -982,6 +982,8 @@ def run_interactions(
             _perform_hover_away(page, interaction)
         elif itype == "click":
             _perform_click(page, interaction)
+        elif itype == "input_text":
+            _perform_input_text(page, interaction)
         elif itype == "ha_service":
             if ha is None:
                 raise ValueError(
@@ -1090,6 +1092,31 @@ def _perform_click(page: Page, interaction: dict[str, Any]) -> None:
     else:
         page.locator(interaction["selector"]).click()
 
+    page.wait_for_timeout(settle_ms)
+
+
+def _perform_input_text(page: Page, interaction: dict[str, Any]) -> None:
+    """Select an input control by root/selector, then type text char by char with a delay.
+
+    If *root* is present the element is resolved inside a shadow-root chain
+    using JS (``getBoundingClientRect`` + ``page.mouse.click``).  Otherwise
+    a simple page-level Playwright locator click is used.
+
+    Use ``delay_ms`` to control the delay between keypresses (default 100).
+    Use ``settle_ms`` to wait after typing completes (default 500).
+    """
+    __tracebackhide__ = True
+    text: str = interaction["text"]
+    delay_ms: int = int(interaction.get("delay_ms", 100))
+    settle_ms: int = int(interaction.get("settle_ms", 500))
+
+    if "root" in interaction:
+        rect = _get_element_rect(page, interaction)
+        page.mouse.click(rect["x"] + rect["w"] / 2, rect["y"] + rect["h"] / 2)
+    else:
+        page.locator(interaction["selector"]).click()
+
+    page.keyboard.type(text, delay=delay_ms)
     page.wait_for_timeout(settle_ms)
 
 
