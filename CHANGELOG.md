@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v2.6.0 (2026-07-15)
+
+### Chores
+
+- **docs**: Update README to remove UIX testing instructions
+  ([`ad89763`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/ad89763e1f7a065f90c3e1f8b75fbe236cb711c2))
+
+### Features
+
+- Add input_text interaction and documentation(#26)
+  ([`bdd3920`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/bdd3920f4d88022587745d6aebf9e88ee0b88368))
+
+
 ## v2.5.3 (2026-06-10)
 
 ### Bug Fixes
