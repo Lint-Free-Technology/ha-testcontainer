@@ -292,6 +292,29 @@ Shadow-root form:
   settle_ms: 1500
 ```
 
+### `input_text` — input text into a control
+
+Selects an input control, clicks it to focus, and then types the specified text character by character with a configurable delay.
+
+Simple form (direct CSS selector):
+
+```yaml
+- type: input_text
+  selector: "#input-id"
+  text: "Hello World"
+  delay_ms: 100                  # optional, default 100 — delay between keypresses
+  settle_ms: 500                 # optional, default 500 — wait after typing completes
+```
+
+Shadow-root form:
+
+```yaml
+- type: input_text
+  root: my-card
+  selector: input
+  text: "Hello World"
+```
+
 ### `wait` — unconditional pause
 
 ```yaml
