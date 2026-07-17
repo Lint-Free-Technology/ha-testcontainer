@@ -63,7 +63,7 @@ EXCLUSIONS_FILE = Path(__file__).parent / "doc-image-audit-exclusions.txt"
 _IMG_RE = re.compile(r"!\[.*?\]\(([^)]+)\)")
 
 # Extensions considered "documentation images" for audit purposes.
-_IMAGE_EXTS = {".png", ".gif"}
+_IMAGE_EXTS = {".png", ".gif", ".mp4"}
 
 
 # ---------------------------------------------------------------------------
@@ -72,7 +72,7 @@ _IMAGE_EXTS = {".png", ".gif"}
 
 
 def _collect_referenced_images() -> set[str]:
-    """Return repo-relative paths of PNG/GIF images embedded in docs Markdown files.
+    """Return repo-relative paths of PNG/GIF/MP4 images embedded in docs Markdown files.
 
     Only standard Markdown image syntax (``![alt](path)``) is scanned.  URL
     fragments such as ``#only-light`` are stripped.  Absolute HTTP/HTTPS URLs
