@@ -217,6 +217,24 @@ text_startswith
     The ``textContent`` of the element matched by *selector* (trimmed) must
     start with *expected*.
 
+object_property_present
+    The dot-separated JavaScript property path named *property* on the
+    element matched by *selector* must exist.
+
+object_property_absent
+    The final member of the dot-separated JavaScript property path named
+    *property* on the element matched by *selector* must not exist.  Every
+    parent in the path must exist.
+
+object_property_text_equals
+    The string form of the value at the dot-separated JavaScript property path
+    named *property* on the element matched by *selector* must equal
+    *expected*.
+
+object_property_text_starts_with
+    As ``object_property_text_equals``, but the value must start with
+    *expected*.
+
 snapshot
     A Playwright snapshot is captured under the name *name*.  By default the
     full viewport is captured.  Add a ``root`` key (shadow-piercing selector)
@@ -1291,6 +1309,10 @@ def run_assertions(page: Page, scenario: dict[str, Any]) -> None:
             "css_variable",
             "text_equals",
             "text_startswith",
+            "object_property_present",
+            "object_property_absent",
+            "object_property_text_equals",
+            "object_property_text_starts_with",
         }:
             _run_dom_assertion(page, assertion, atype)
         elif atype in _assertion_extensions:
@@ -1527,6 +1549,52 @@ def _run_dom_assertion(page: Page, assertion: dict[str, Any], atype: str) -> Non
             f"Text of <{selector}> does not start with {expected!r};"
             f" got {result['text']!r}"
         )
+
+    elif atype in {
+        "object_property_present",
+        "object_property_absent",
+        "object_property_text_equals",
+        "object_property_text_starts_with",
+    }:
+        property_path = assertion["property"]
+        result = page.evaluate(
+            f"() => {{ {root_js} if (_err) return {{error: _err}};"
+            f" var el = currentRoot.querySelector({selector!r});"
+            f" if (!el) return {{error: 'selector {selector} not found'}};"
+            f" var value = el; var parts = {property_path!r}.split('.');"
+            f" for (var i = 0; i < parts.length; i++) {{"
+            f"   if (value === null || value === undefined || !(parts[i] in Object(value))) {{"
+            f"     return {{present: false, missing: parts.slice(0, i + 1).join('.'),"
+            f"             missingAtLast: i === parts.length - 1}};"
+            f"   }}"
+            f"   value = value[parts[i]];"
+            f" }}"
+            f" return {{present: true, text: String(value)}}; }}"
+        )
+        _check_traversal(result, assertion)
+
+        if atype == "object_property_present":
+            assert result["present"], (
+                f"Expected property {property_path!r} on <{selector}> to be present;"
+                f" missing {result['missing']!r}"
+            )
+        elif atype == "object_property_absent":
+            assert not result["present"] and result["missingAtLast"], (
+                f"Expected the final property in {property_path!r} on <{selector}> "
+                f"to be absent; missing {result.get('missing')!r}"
+            )
+        elif atype == "object_property_text_equals":
+            expected = assertion["expected"]
+            assert result["present"] and result["text"] == expected, (
+                f"Text of property {property_path!r} on <{selector}>:"
+                f" expected {expected!r}, got {result.get('text')!r}"
+            )
+        elif atype == "object_property_text_starts_with":
+            expected = assertion["expected"]
+            assert result["present"] and result["text"].startswith(expected), (
+                f"Text of property {property_path!r} on <{selector}> does not start "
+                f"with {expected!r}; got {result.get('text')!r}"
+            )
 
 
 def _check_traversal(result: Any, assertion: dict[str, Any]) -> None:

@@ -26,6 +26,87 @@ def _make_page() -> MagicMock:
     return MagicMock()
 
 
+class TestObjectPropertyAssertions:
+    """Object-property assertion dispatch and missing-path handling."""
+
+    @pytest.mark.parametrize(
+        ("atype", "result"),
+        [
+            ("object_property_present", {"present": True, "text": "value"}),
+            ("object_property_absent", {"present": False, "missingAtLast": True}),
+            (
+                "object_property_text_equals",
+                {"present": True, "text": "Kitchen Light"},
+            ),
+            (
+                "object_property_text_starts_with",
+                {"present": True, "text": "Kitchen Light"},
+            ),
+        ],
+    )
+    def test_supported_types_accept_matching_properties(self, atype, result):
+        page = _make_page()
+        page.evaluate.return_value = result
+        assertion = {
+            "type": atype,
+            "root": "my-card",
+            "selector": "ha-card",
+            "property": "hass.states",
+            "expected": "Kitchen Light",
+        }
+
+        sr.run_assertions(page, {"assertions": [assertion]})
+
+        script = page.evaluate.call_args.args[0]
+        assert "missingAtLast" in script
+        assert "hass.states" in script
+
+    @pytest.mark.parametrize(
+        ("atype", "result"),
+        [
+            ("object_property_present", {"present": False, "missing": "hass"}),
+            (
+                "object_property_text_equals",
+                {"present": False, "missing": "hass.states"},
+            ),
+            (
+                "object_property_text_starts_with",
+                {"present": False, "missing": "hass.states"},
+            ),
+        ],
+    )
+    def test_missing_property_is_a_non_match(self, atype, result):
+        page = _make_page()
+        page.evaluate.return_value = result
+        assertion = {
+            "type": atype,
+            "root": "my-card",
+            "selector": "ha-card",
+            "property": "hass.states",
+            "expected": "on",
+        }
+
+        with pytest.raises(AssertionError):
+            sr.run_assertions(page, {"assertions": [assertion]})
+
+    def test_absent_requires_only_the_final_property_to_be_missing(self):
+        page = _make_page()
+        page.evaluate.return_value = {
+            "present": False,
+            "missing": "hass.states",
+            "missingAtLast": False,
+        }
+        assertion = {
+            "type": "object_property_absent",
+            "root": "my-card",
+            "selector": "ha-card",
+            "property": "hass.states.legacy_value",
+        }
+
+        with pytest.raises(AssertionError, match="final property"):
+            sr.run_assertions(page, {"assertions": [assertion]})
+
+
 # ---------------------------------------------------------------------------
 # set_viewport interaction
 # ---------------------------------------------------------------------------

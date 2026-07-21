@@ -428,6 +428,40 @@ and any hyphens.
   expected: "on"
 ```
 
+### Object property assertions
+
+These assertions inspect a JavaScript property on the element matched by
+`selector`.  Set `property` to a dot-separated path, such as
+`controller.settings.display_name`.  A missing property is
+a non-match.  For `object_property_absent`, only the final property may be
+missing; every parent in its path must be present.
+`object_property_text_equals` and `object_property_text_starts_with` convert
+the resolved value to JavaScript text before comparing it with `expected`.
+
+```yaml
+- type: object_property_present
+  root: my-card
+  selector: ha-card
+  property: controller.settings
+
+- type: object_property_absent
+  root: my-card
+  selector: ha-card
+  property: controller.settings.legacy_value
+
+- type: object_property_text_equals
+  root: my-card
+  selector: ha-card
+  property: controller.settings.state
+  expected: "on"
+
+- type: object_property_text_starts_with
+  root: my-card
+  selector: ha-card
+  property: controller.settings.display_name
+  expected: "Kitchen"
+```
+
 ---
 
 ## Snapshot assertions
