@@ -7,6 +7,7 @@ browser is not needed.
 from __future__ import annotations
 
 import io
+import shutil
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -344,3 +345,71 @@ class TestDocAnimationViewportNormalization:
 
         with pytest.raises(AssertionError, match="captured 0 frames"):
             sr.capture_doc_animation(page, scenario)
+
+
+class TestDocAnimationMp4:
+    """doc_animation with .mp4 output format."""
+
+    def test_mp4_generation_and_verification(self, tmp_path, monkeypatch):
+        page = _make_page()
+        # Side effect for screenshots
+        page.screenshot.side_effect = [
+            _png_bytes(8, 6, (255, 0, 0)),
+            _png_bytes(8, 6, (0, 255, 0)),
+        ]
+
+        monkeypatch.setattr(sr, "REPO_ROOT", tmp_path)
+        monkeypatch.setenv("DOC_IMAGE_UPDATE", "1")
+
+        scenario = {
+            "doc_animation": {
+                "output": "docs/assets/animation.mp4",
+                "interval_ms": 100,
+                "frames": 2,
+            }
+        }
+
+        # 1. Create/Update: This will compile MP4 via ffmpeg
+        sr.capture_doc_animation(page, scenario)
+
+        output_file = tmp_path / "docs/assets/animation.mp4"
+        assert output_file.exists()
+        # Verify it has some bytes (should be valid mp4 format)
+        assert output_file.stat().st_size > 0
+
+        # 2. Comparison: Run without update to verify frame extraction & exact/threshold check
+        # We need to supply screenshots again since we run the test again
+        page.screenshot.side_effect = [
+            _png_bytes(8, 6, (255, 0, 0)),
+            _png_bytes(8, 6, (0, 255, 0)),
+        ]
+        monkeypatch.delenv("DOC_IMAGE_UPDATE", raising=False)
+
+        # Should pass because screenshots match existing mp4 frames closely (or exactly within threshold)
+        sr.capture_doc_animation(page, scenario)
+
+        # 3. Validation failure: Run with slightly different screenshots to trigger AssertionError
+        page.screenshot.side_effect = [
+            _png_bytes(8, 6, (0, 0, 255)),  # Blue instead of Red
+            _png_bytes(8, 6, (0, 255, 0)),
+        ]
+        with pytest.raises(AssertionError, match="Doc animation mismatch"):
+            sr.capture_doc_animation(page, scenario)
+
+    def test_mp4_missing_ffmpeg_raises_runtime_error(self, tmp_path, monkeypatch):
+        page = _make_page()
+        monkeypatch.setattr(sr, "REPO_ROOT", tmp_path)
+        monkeypatch.setenv("DOC_IMAGE_UPDATE", "1")
+        # Mock shutil.which to return None so ffmpeg is not found
+        monkeypatch.setattr(shutil, "which", lambda _: None)
+
+        scenario = {
+            "doc_animation": {
+                "output": "docs/assets/animation_no_ffmpeg.mp4",
+                "frames": 2,
+            }
+        }
+
+        with pytest.raises(RuntimeError, match="ffmpeg is required to capture MP4 animations"):
+            sr.capture_doc_animation(page, scenario)
+

@@ -526,6 +526,9 @@ DOCS_SCENARIOS_DIR: Path = REPO_ROOT / "docs" / "scenarios"
 # Background color for normalized doc_animation canvases.
 CANVAS_BACKGROUND_RGBA: tuple[int, int, int, int] = (255, 255, 255, 255)
 
+# Color tolerance (0-255) for lossy MP4 comparison to ignore minor H.264 compression artifacts.
+MP4_LOSSY_THRESHOLD: int = 12
+
 # ---------------------------------------------------------------------------
 # Extension registry
 # ---------------------------------------------------------------------------
@@ -1959,8 +1962,19 @@ def capture_doc_animation(
         ) from exc
 
     output_path = REPO_ROOT / doc_animation["output"]
-    pt, pr, pb, pl = _parse_padding(doc_animation.get("padding", 0))
     interval_ms: int = doc_animation.get("interval_ms", 100)
+    if interval_ms <= 0:
+        raise ValueError(
+            f"Doc animation '{doc_animation['output']}': interval_ms must be greater than 0, got {interval_ms}."
+        )
+    is_mp4 = output_path.suffix.lower() == ".mp4"
+    if is_mp4:
+        if not shutil.which("ffmpeg"):
+            raise RuntimeError(
+                f"ffmpeg is required to capture MP4 animations, but was not found in PATH. "
+                f"Please install ffmpeg to use MP4 output."
+            )
+    pt, pr, pb, pl = _parse_padding(doc_animation.get("padding", 0))
     threshold: float = doc_animation.get("threshold", 0.0)
     scale: str = doc_animation.get("scale", "css")
     dither: bool = doc_animation.get("dither", True)
@@ -2078,6 +2092,12 @@ def capture_doc_animation(
     # through during GIF playback.
     max_w = max(f.size[0] for f in raw_frame_images)
     max_h = max(f.size[1] for f in raw_frame_images)
+    if is_mp4:
+        # MP4 H.264 yuv420p requires even width and height.
+        if max_w % 2 != 0:
+            max_w += 1
+        if max_h % 2 != 0:
+            max_h += 1
     frame_images: list[Any] = []
     for f in raw_frame_images:
         if f.size == (max_w, max_h):
@@ -2087,57 +2107,112 @@ def capture_doc_animation(
         canvas.paste(f, (0, 0))
         frame_images.append(canvas)
 
-    # --- assemble GIF ---
-    # Build a global palette by stacking all frames vertically into one image
-    # so the quantiser sees the actual pixel distribution across the entire
-    # animation rather than a blended average.  Every frame then uses the
-    # same palette, which avoids colour-flicker between frames.
-    # Floyd-Steinberg dithering (dither=1) is applied when ``dither`` is True;
-    # it diffuses quantisation error across neighbouring pixels and eliminates
-    # the banding that would otherwise appear in gradients (including greyscale).
-    gif_buf = io.BytesIO()
-    fw, fh = frame_images[0].size
-    palette_source = Image.new("RGB", (fw, fh * len(frame_images)))
-    for idx, f in enumerate(frame_images):
-        palette_source.paste(f.convert("RGB"), (0, idx * fh))
-    palette_image = palette_source.quantize(colors=256, dither=0)
-    dither_flag = 1 if dither else 0
-    quantized_frames = [
-        f.convert("RGB").quantize(colors=256, palette=palette_image, dither=dither_flag)
-        for f in frame_images
-    ]
-    quantized_frames[0].save(
-        gif_buf,
-        format="GIF",
-        save_all=True,
-        append_images=quantized_frames[1:],
-        loop=0,
-        duration=interval_ms,
-        optimize=False,
-        disposal=2,
-    )
-    actual_gif = gif_buf.getvalue()
+    actual_bytes = b""
+    if is_mp4:
+        import subprocess
+        import tempfile
+        fps = 1000.0 / interval_ms
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+        try:
+            cmd = [
+                "ffmpeg", "-y",
+                "-f", "image2pipe",
+                "-vcodec", "png",
+                "-r", str(fps),
+                "-i", "-",
+                "-c:v", "libx264",
+                "-pix_fmt", "yuv420p",
+                "-movflags", "+faststart",
+                str(tmp_path)
+            ]
+            with subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+                all_pngs = bytearray()
+                for img in frame_images:
+                    buf = io.BytesIO()
+                    img.save(buf, format="PNG")
+                    all_pngs.extend(buf.getvalue())
+                stdout, stderr = process.communicate(input=bytes(all_pngs))
+                if process.returncode != 0:
+                    raise RuntimeError(f"FFmpeg failed: {stderr.decode('utf-8', errors='replace')}")
+            actual_bytes = tmp_path.read_bytes()
+        finally:
+            if tmp_path.exists():
+                tmp_path.unlink()
+    else:
+        # --- assemble GIF ---
+        # Build a global palette by stacking all frames vertically into one image
+        # so the quantiser sees the actual pixel distribution across the entire
+        # animation rather than a blended average.  Every frame then uses the
+        # same palette, which avoids colour-flicker between frames.
+        # Floyd-Steinberg dithering (dither=1) is applied when ``dither`` is True;
+        # it diffuses quantisation error across neighbouring pixels and eliminates
+        # the banding that would otherwise appear in gradients (including greyscale).
+        gif_buf = io.BytesIO()
+        fw, fh = frame_images[0].size
+        palette_source = Image.new("RGB", (fw, fh * len(frame_images)))
+        for idx, f in enumerate(frame_images):
+            palette_source.paste(f.convert("RGB"), (0, idx * fh))
+        palette_image = palette_source.quantize(colors=256, dither=0)
+        dither_flag = 1 if dither else 0
+        quantized_frames = [
+            f.convert("RGB").quantize(colors=256, palette=palette_image, dither=dither_flag)
+            for f in frame_images
+        ]
+        quantized_frames[0].save(
+            gif_buf,
+            format="GIF",
+            save_all=True,
+            append_images=quantized_frames[1:],
+            loop=0,
+            duration=interval_ms,
+            optimize=False,
+            disposal=2,
+        )
+        actual_bytes = gif_buf.getvalue()
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # --- write or compare ---
     if os.environ.get("DOC_IMAGE_UPDATE") == "1" or not output_path.exists():
         state = "updated" if output_path.exists() else "created"
-        output_path.write_bytes(actual_gif)
+        output_path.write_bytes(actual_bytes)
         print(f"\n[doc_animation] {state}: {output_path.relative_to(REPO_ROOT)}")
         return
 
-    existing_gif = output_path.read_bytes()
-    if existing_gif == actual_gif:
-        return
+    if not is_mp4:
+        existing_gif = output_path.read_bytes()
+        if existing_gif == actual_bytes:
+            return
 
-    img_existing = Image.open(io.BytesIO(existing_gif))
-    img_actual_gif = Image.open(io.BytesIO(actual_gif))
+        img_existing = Image.open(io.BytesIO(existing_gif))
+        img_actual_gif = Image.open(io.BytesIO(actual_bytes))
 
-    # GIF frames are palette-indexed ("P" mode); convert to RGB so
-    # ImageChops.difference works and alpha is not a factor in the comparison.
-    existing_frames = [f.copy().convert("RGB") for f in ImageSequence.Iterator(img_existing)]
-    actual_frames = [f.copy().convert("RGB") for f in ImageSequence.Iterator(img_actual_gif)]
+        # GIF frames are palette-indexed ("P" mode); convert to RGB so
+        # ImageChops.difference works and alpha is not a factor in the comparison.
+        existing_frames = [f.copy().convert("RGB") for f in ImageSequence.Iterator(img_existing)]
+        actual_frames = [f.copy().convert("RGB") for f in ImageSequence.Iterator(img_actual_gif)]
+    else:
+        # Extract frames from MP4 using ffmpeg.
+        import subprocess
+        import tempfile
+        existing_frames = []
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", str(output_path),
+                "-vsync", "0",
+                str(tmp_path / "frame_%04d.png")
+            ]
+            process = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if process.returncode != 0:
+                raise RuntimeError(f"Failed to extract frames from existing MP4: {process.stderr.decode('utf-8', errors='replace')}")
+            for p in sorted(tmp_path.glob("frame_*.png")):
+                img = Image.open(p)
+                img.load()
+                existing_frames.append(img.convert("RGB"))
+        actual_frames = [f.convert("RGB") for f in frame_images]
 
     if len(existing_frames) != len(actual_frames):
         raise AssertionError(
@@ -2155,6 +2230,10 @@ def capture_doc_animation(
                 "Run with DOC_IMAGE_UPDATE=1 to regenerate."
             )
         diff = ImageChops.difference(ef, af)
+        if is_mp4:
+            # MP4 is lossy; convert differences above the threshold to 255 and below to 0.
+            # This creates a binary difference mask of pixels exceeding the lossy threshold.
+            diff = diff.point(lambda p: 255 if p > MP4_LOSSY_THRESHOLD else 0)
         try:
             diff_pixels = sum(1 for p in diff.get_flattened_data() if any(c > 0 for c in p))
         except AttributeError:

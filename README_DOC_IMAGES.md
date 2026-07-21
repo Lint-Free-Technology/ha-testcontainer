@@ -147,10 +147,15 @@ pixels (no units):
 
 ---
 
-## Animated GIFs — `doc_animation:`
+## Animations (GIF & MP4) — `doc_animation:`
 
 Add a `doc_animation:` key to capture a sequence of frames and assemble them
-into an animated GIF.  **Pillow is required.**
+into an animated GIF or an MP4 video (H.264 encoded).
+
+- For `.gif` output files: **Pillow is required** (`pip install Pillow`).
+- For `.mp4` output files: **ffmpeg** must be installed on your system (and available in your `PATH`), and **Pillow** is also required.
+
+MP4 animations are highly recommended for animations longer than a few seconds, as H.264 provides significantly better compression and smaller file sizes compared to frame-based GIFs.
 
 ### Minimal example (flat mode)
 
@@ -186,7 +191,7 @@ doc_animation:
 
 | Key | Required | Description |
 |---|---|---|
-| `output` | ✅ | Path relative to the repository root where the GIF is written |
+| `output` | ✅ | Path relative to the repository root where the GIF or MP4 is written |
 | `root` | | Shadow-piercing selector for the element to crop to. Omit for full viewport |
 | `padding` | | Extra whitespace border (same shorthand as `doc_image`) |
 | `frames` | | Total frames to capture in flat mode, or per-segment default (default `10`) |
