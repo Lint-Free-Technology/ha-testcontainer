@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v2.7.0 (2026-07-21)
+
+### Features
+
+- Add javascript object property assertions
+  ([`7542d49`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/7542d4978a5bfafe864c65d0043e12955cc8a724))
+
+- Support MP4 format in doc-animation
+  ([`2d3d92d`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/2d3d92d3f414305e88f56d8f317011224edd8d0a))
+
+
 ## v2.6.0 (2026-07-15)
 
 ### Chores
