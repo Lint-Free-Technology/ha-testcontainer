@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v2.8.0 (2026-08-16)
+
+### Features
+
+- Add object_property_text_ends_with assertion
+  ([`e50b219`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/e50b21962d95c35de807faea9a2b6ab17414c546))
+
+
 ## v2.7.0 (2026-07-21)
 
 ### Features
