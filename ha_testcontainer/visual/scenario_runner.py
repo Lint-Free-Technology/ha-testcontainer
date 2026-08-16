@@ -235,6 +235,10 @@ object_property_text_starts_with
     As ``object_property_text_equals``, but the value must start with
     *expected*.
 
+object_property_text_ends_with
+    As ``object_property_text_equals``, but the value must end with
+    *expected*.
+
 snapshot
     A Playwright snapshot is captured under the name *name*.  By default the
     full viewport is captured.  Add a ``root`` key (shadow-piercing selector)
@@ -1313,6 +1317,7 @@ def run_assertions(page: Page, scenario: dict[str, Any]) -> None:
             "object_property_absent",
             "object_property_text_equals",
             "object_property_text_starts_with",
+            "object_property_text_ends_with",
         }:
             _run_dom_assertion(page, assertion, atype)
         elif atype in _assertion_extensions:
@@ -1555,6 +1560,7 @@ def _run_dom_assertion(page: Page, assertion: dict[str, Any], atype: str) -> Non
         "object_property_absent",
         "object_property_text_equals",
         "object_property_text_starts_with",
+        "object_property_text_ends_with",
     }:
         property_path = assertion["property"]
         result = page.evaluate(
@@ -1593,6 +1599,12 @@ def _run_dom_assertion(page: Page, assertion: dict[str, Any], atype: str) -> Non
             expected = assertion["expected"]
             assert result["present"] and result["text"].startswith(expected), (
                 f"Text of property {property_path!r} on <{selector}> does not start "
+                f"with {expected!r}; got {result.get('text')!r}"
+            )
+        elif atype == "object_property_text_ends_with":
+            expected = assertion["expected"]
+            assert result["present"] and result["text"].endswith(expected), (
+                f"Text of property {property_path!r} on <{selector}> does not end "
                 f"with {expected!r}; got {result.get('text')!r}"
             )
 
