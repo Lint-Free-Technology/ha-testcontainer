@@ -13,6 +13,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 from testcontainers.core.container import DockerContainer
 
 from ha_testcontainer import HATestContainer, HAVersion
@@ -231,3 +232,114 @@ class TestPushLovelaceConfig:
         with patch("ha_testcontainer.container.websocket.create_connection", return_value=ws):
             with pytest.raises(RuntimeError, match="WebSocket auth failed"):
                 self.container.push_lovelace_config({"title": "Bad"})
+
+
+# ---------------------------------------------------------------------------
+# Startup and Onboarding unit tests
+# ---------------------------------------------------------------------------
+
+
+class TestContainerStartupUnit:
+    """Unit tests for container startup and onboarding state detection."""
+
+    @patch("ha_testcontainer.container.requests.get")
+    @patch("ha_testcontainer.container.time.sleep")
+    def test_wait_for_ha_success(self, mock_sleep, mock_get, container: HATestContainer):
+        """_wait_for_ha completes successfully when the root URL returns 200."""
+        container.get_url = MagicMock(return_value="http://localhost:8123")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_get.return_value = mock_response
+
+        # Call the private method
+        container._wait_for_ha()
+
+        # Assert requests.get was called with the root URL
+        mock_get.assert_called_with("http://localhost:8123/", timeout=5)
+        # Verify no sleep was needed
+        mock_sleep.assert_not_called()
+
+    @patch("ha_testcontainer.container.requests.get")
+    @patch("ha_testcontainer.container.time.sleep")
+    def test_wait_for_ha_retry_and_success(self, mock_sleep, mock_get, container: HATestContainer):
+        """_wait_for_ha retries on RequestException or non-200 and eventually succeeds."""
+        container.get_url = MagicMock(return_value="http://localhost:8123")
+
+        # Mock first call raising RequestException, second call returning 500, third call returning 200
+        mock_resp_500 = MagicMock()
+        mock_resp_500.status_code = 500
+        mock_resp_200 = MagicMock()
+        mock_resp_200.status_code = 200
+
+        mock_get.side_effect = [
+            requests.exceptions.RequestException("Connection failed"),
+            mock_resp_500,
+            mock_resp_200,
+        ]
+
+        container._wait_for_ha()
+
+        assert mock_get.call_count == 3
+        assert mock_sleep.call_count == 2
+
+    @patch("ha_testcontainer.container.requests.get")
+    @patch("ha_testcontainer.container.time.sleep")
+    @patch("ha_testcontainer.container.time.monotonic")
+    def test_wait_for_ha_timeout(self, mock_monotonic, mock_sleep, mock_get, container: HATestContainer):
+        """_wait_for_ha raises TimeoutError if timeout is exceeded."""
+        container.get_url = MagicMock(return_value="http://localhost:8123")
+
+        mock_monotonic.side_effect = [100.0, 101.0, 300.0]  # Simulate passage of time past STARTUP_TIMEOUT
+        mock_get.side_effect = requests.exceptions.RequestException("Connection failed")
+
+        with pytest.raises(TimeoutError, match="Home Assistant did not become ready within"):
+            container._wait_for_ha()
+
+    @patch("ha_testcontainer.container.requests.get")
+    @patch("ha_testcontainer.container.time.sleep")
+    def test_needs_onboarding_true(self, mock_sleep, mock_get, container: HATestContainer):
+        """_needs_onboarding returns True if any onboarding step is not done."""
+        container.get_url = MagicMock(return_value="http://localhost:8123")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [
+            {"step": "user", "done": True},
+            {"step": "core_config", "done": False},
+        ]
+        mock_get.return_value = mock_response
+
+        assert container._needs_onboarding() is True
+
+    @patch("ha_testcontainer.container.requests.get")
+    @patch("ha_testcontainer.container.time.sleep")
+    def test_needs_onboarding_false(self, mock_sleep, mock_get, container: HATestContainer):
+        """_needs_onboarding returns False if all onboarding steps are done."""
+        container.get_url = MagicMock(return_value="http://localhost:8123")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [
+            {"step": "user", "done": True},
+            {"step": "core_config", "done": True},
+        ]
+        mock_get.return_value = mock_response
+
+        assert container._needs_onboarding() is False
+
+    @patch("ha_testcontainer.container.requests.get")
+    @patch("ha_testcontainer.container.time.sleep")
+    @patch("ha_testcontainer.container.time.monotonic")
+    def test_needs_onboarding_failure_raises_runtime_error(
+        self, mock_monotonic, mock_sleep, mock_get, container: HATestContainer
+    ):
+        """_needs_onboarding raises RuntimeError if it consistently fails to determine state."""
+        container.get_url = MagicMock(return_value="http://localhost:8123")
+
+        mock_monotonic.side_effect = [100.0, 101.0, 120.0]  # Simulate passage of time past 15s limit
+        mock_get.side_effect = requests.exceptions.RequestException("Connection failed")
+
+        with pytest.raises(RuntimeError, match="Could not determine Home Assistant onboarding state"):
+            container._needs_onboarding()
+

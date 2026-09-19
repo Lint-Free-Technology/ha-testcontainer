@@ -276,6 +276,9 @@ class HATestContainer(DockerContainer):
 
     def _needs_onboarding(self) -> bool:
         """Return True when the HA onboarding wizard has not been completed."""
+        last_exc: Exception | None = None
+        last_status: int | None = None
+
         deadline = time.monotonic() + 15
         while time.monotonic() < deadline:
             try:
@@ -283,13 +286,18 @@ class HATestContainer(DockerContainer):
                     f"{self.get_url()}/api/onboarding",
                     timeout=5,
                 )
+                last_status = resp.status_code
                 if resp.status_code == 200:
                     steps = resp.json()
                     return any(not s.get("done", False) for s in steps)
-            except requests.exceptions.RequestException:
-                pass
+            except requests.exceptions.RequestException as exc:
+                last_exc = exc
             time.sleep(1)
-        return False
+
+        raise RuntimeError(
+            f"Could not determine Home Assistant onboarding state "
+            f"(last_status={last_status}, last_error={last_exc!r})"
+        )
 
     def _perform_onboarding(self) -> None:
         """Run through the HA onboarding API to create the admin user and token."""
