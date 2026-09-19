@@ -372,6 +372,20 @@ def ha_lovelace_url_path(ha) -> str:
 
 
 @pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args):
+    """Override browser launch arguments to disable /dev/shm usage on virtual machines/Docker.
+
+    This prevents Chromium from crashing due to memory limits in containerised
+    environments (such as GitHub Codespaces, CI, or local Docker runs) by forcing
+    it to use /tmp instead of the limited /dev/shm space.
+    """
+    return {
+        **browser_type_launch_args,
+        "args": browser_type_launch_args.get("args", []) + ["--disable-dev-shm-usage"],
+    }
+
+
+@pytest.fixture(scope="session")
 def ha_browser_context(browser, ha_url: str, ha_token: str):
     """A Playwright browser context pre-authenticated with HA.
 
