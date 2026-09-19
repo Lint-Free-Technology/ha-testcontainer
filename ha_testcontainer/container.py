@@ -250,22 +250,22 @@ class HATestContainer(DockerContainer):
         # First wait for the "Home Assistant is running" log line so we know
         # the internal startup sequence is complete.
         try:
-            LogMessageWaitStrategy("Home Assistant is running").with_startup_timeout(STARTUP_TIMEOUT).wait_until_ready(self)
+            LogMessageWaitStrategy("Home Assistant is running").with_startup_timeout(10).wait_until_ready(self)
         except Exception:  # noqa: BLE001
             pass  # fall through to the HTTP poll below
 
         # Then confirm the HTTP endpoint is reachable.
-        url = f"{self.get_url()}/api/"
+        # Use the public root endpoint "/" instead of "/api/" to avoid triggering
+        # failed authentication security tarpits (http.ban) which cause read timeouts.
+        url = f"{self.get_url()}/"
         deadline = time.monotonic() + STARTUP_TIMEOUT
         last_exc: Exception | None = None
         while time.monotonic() < deadline:
             try:
                 resp = requests.get(url, timeout=5)
-                # 200 = already set up, 401 = running but needs auth,
-                # 403 = forbidden (onboarding state)
-                if resp.status_code in (200, 401, 403):
+                if resp.status_code == 200:
                     return
-            except requests.exceptions.ConnectionError as exc:
+            except requests.exceptions.RequestException as exc:
                 last_exc = exc
             time.sleep(2)
 
@@ -276,17 +276,28 @@ class HATestContainer(DockerContainer):
 
     def _needs_onboarding(self) -> bool:
         """Return True when the HA onboarding wizard has not been completed."""
-        try:
-            resp = requests.get(
-                f"{self.get_url()}/api/onboarding",
-                timeout=10,
-            )
-            if resp.status_code == 200:
-                steps = resp.json()
-                return any(not s.get("done", False) for s in steps)
-        except requests.exceptions.RequestException:
-            pass
-        return False
+        last_exc: Exception | None = None
+        last_status: int | None = None
+
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            try:
+                resp = requests.get(
+                    f"{self.get_url()}/api/onboarding",
+                    timeout=5,
+                )
+                last_status = resp.status_code
+                if resp.status_code == 200:
+                    steps = resp.json()
+                    return any(not s.get("done", False) for s in steps)
+            except requests.exceptions.RequestException as exc:
+                last_exc = exc
+            time.sleep(1)
+
+        raise RuntimeError(
+            f"Could not determine Home Assistant onboarding state "
+            f"(last_status={last_status}, last_error={last_exc!r})"
+        )
 
     def _perform_onboarding(self) -> None:
         """Run through the HA onboarding API to create the admin user and token."""

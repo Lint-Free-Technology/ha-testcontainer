@@ -51,7 +51,18 @@ list-plugin-releases:
 ## Install Python dependencies (test extras)
 install:
 	pip install -e ".[test]"
-	playwright install chromium
+	@if [ "$$(uname)" = "Linux" ]; then \
+		if [ "$$CODESPACES" = "true" ] || sudo -n true 2>/dev/null; then \
+			echo "Linux environment with package-install privileges detected. Installing Chromium with system dependencies..."; \
+			playwright install --with-deps chromium; \
+		else \
+			echo "Linux detected without passwordless sudo. Installing Chromium only..."; \
+			playwright install chromium; \
+		fi \
+	else \
+		echo "Installing Chromium..."; \
+		playwright install chromium; \
+	fi
 
 # ---------------------------------------------------------------------------
 # Tests (ha-testcontainer's own unit/smoke tests)
