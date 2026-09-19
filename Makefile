@@ -52,11 +52,11 @@ list-plugin-releases:
 install:
 	pip install -e ".[test]"
 	@if [ "$$(uname)" = "Linux" ]; then \
-		if [ "$$CODESPACES" = "true" ] || [ "$$CI" = "true" ] || sudo -n true 2>/dev/null; then \
-			echo "Linux virtual environment/CI/sudo-enabled environment detected. Installing Chromium with system dependencies..."; \
+		if [ "$$CODESPACES" = "true" ] || sudo -n true 2>/dev/null; then \
+			echo "Linux environment with package-install privileges detected. Installing Chromium with system dependencies..."; \
 			playwright install --with-deps chromium; \
 		else \
-			echo "Linux detected without passwordless sudo/CI. Installing Chromium only..."; \
+			echo "Linux detected without passwordless sudo. Installing Chromium only..."; \
 			playwright install chromium; \
 		fi \
 	else \
