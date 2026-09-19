@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v2.9.0 (2026-09-19)
+
+### Features
+
+- Automate Playwright VM dependencies, resolve Chromium OOM crashes, and optimize HA startup wait
+  strategies ([#28](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/28),
+  [`a0bd783`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/a0bd783a2d0a0a360b880bc50403e95fc24eafae))
+
+
 ## v2.8.0 (2026-08-16)
 
 ### Features
