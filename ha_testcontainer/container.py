@@ -250,7 +250,7 @@ class HATestContainer(DockerContainer):
         # First wait for the "Home Assistant is running" log line so we know
         # the internal startup sequence is complete.
         try:
-            LogMessageWaitStrategy("Home Assistant is running").with_startup_timeout(STARTUP_TIMEOUT).wait_until_ready(self)
+            LogMessageWaitStrategy("Home Assistant is running").with_startup_timeout(10).wait_until_ready(self)
         except Exception:  # noqa: BLE001
             pass  # fall through to the HTTP poll below
 
@@ -265,7 +265,7 @@ class HATestContainer(DockerContainer):
                 # 403 = forbidden (onboarding state)
                 if resp.status_code in (200, 401, 403):
                     return
-            except requests.exceptions.ConnectionError as exc:
+            except requests.exceptions.RequestException as exc:
                 last_exc = exc
             time.sleep(2)
 
