@@ -255,15 +255,15 @@ class HATestContainer(DockerContainer):
             pass  # fall through to the HTTP poll below
 
         # Then confirm the HTTP endpoint is reachable.
-        url = f"{self.get_url()}/api/"
+        # Use the public root endpoint "/" instead of "/api/" to avoid triggering
+        # failed authentication security tarpits (http.ban) which cause read timeouts.
+        url = f"{self.get_url()}/"
         deadline = time.monotonic() + STARTUP_TIMEOUT
         last_exc: Exception | None = None
         while time.monotonic() < deadline:
             try:
                 resp = requests.get(url, timeout=5)
-                # 200 = already set up, 401 = running but needs auth,
-                # 403 = forbidden (onboarding state)
-                if resp.status_code in (200, 401, 403):
+                if resp.status_code == 200:
                     return
             except requests.exceptions.RequestException as exc:
                 last_exc = exc
