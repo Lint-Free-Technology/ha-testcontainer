@@ -21,7 +21,7 @@ class TestDashboardExistenceCheck:
         }
 
         assert plugin._dashboard_url_path_exists(ha, "ha-tests") is True
-        ha._ws_call.assert_called_once_with({"id": 1, "type": "config/lovelace/dashboards/list"})
+        ha._ws_call.assert_called_once_with({"id": 1, "type": "lovelace/dashboards/list"})
 
     def test_missing_dashboard_returns_false(self):
         ha = MagicMock()

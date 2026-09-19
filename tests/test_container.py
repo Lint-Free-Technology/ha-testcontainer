@@ -82,15 +82,16 @@ class TestDemoEntities:
 class TestStorageDashboard:
     def test_lovelace_storage_endpoint(self, ha):
         """The storage-mode Lovelace dashboard config endpoint is reachable."""
-        resp = ha.api("GET", "lovelace/config")
-        # 200 = dashboard already has a config; 404 = not yet initialised (both are fine).
-        assert resp.status_code in (200, 404)
+        result = ha._ws_call({"id": 1, "type": "lovelace/config"})
+        assert result.get("success") is True or (
+            result.get("success") is False and result.get("error", {}).get("code") == "config_not_found"
+        )
 
     def test_push_lovelace_config(self, ha):
         """A Lovelace config can be pushed via the WebSocket API."""
         config = {"title": "Test", "views": [{"title": "Test View", "path": "test"}]}
         ha.push_lovelace_config(config)
-        resp = ha.api("GET", "lovelace/config")
-        assert resp.status_code == 200
-        assert resp.json().get("title") == "Test"
+        result = ha._ws_call({"id": 1, "type": "lovelace/config"})
+        assert result.get("success") is True
+        assert result.get("result", {}).get("title") == "Test"
 
