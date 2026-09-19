@@ -87,8 +87,10 @@ class TestStorageDashboard:
         assert resp.status_code in (200, 404)
 
     def test_push_lovelace_config(self, ha):
-        """A Lovelace config can be pushed via the REST API."""
+        """A Lovelace config can be pushed via the WebSocket API."""
         config = {"title": "Test", "views": [{"title": "Test View", "path": "test"}]}
-        resp = ha.api("POST", "lovelace/config?force=true", json=config)
-        assert resp.status_code in (200, 201)
+        ha.push_lovelace_config(config)
+        resp = ha.api("GET", "lovelace/config")
+        assert resp.status_code == 200
+        assert resp.json().get("title") == "Test"
 

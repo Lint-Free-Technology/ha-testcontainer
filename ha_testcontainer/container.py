@@ -276,16 +276,19 @@ class HATestContainer(DockerContainer):
 
     def _needs_onboarding(self) -> bool:
         """Return True when the HA onboarding wizard has not been completed."""
-        try:
-            resp = requests.get(
-                f"{self.get_url()}/api/onboarding",
-                timeout=10,
-            )
-            if resp.status_code == 200:
-                steps = resp.json()
-                return any(not s.get("done", False) for s in steps)
-        except requests.exceptions.RequestException:
-            pass
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            try:
+                resp = requests.get(
+                    f"{self.get_url()}/api/onboarding",
+                    timeout=5,
+                )
+                if resp.status_code == 200:
+                    steps = resp.json()
+                    return any(not s.get("done", False) for s in steps)
+            except requests.exceptions.RequestException:
+                pass
+            time.sleep(1)
         return False
 
     def _perform_onboarding(self) -> None:
