@@ -107,6 +107,68 @@ class TestObjectPropertyAssertions:
             sr.run_assertions(page, {"assertions": [assertion]})
 
 
+class TestSnapshotLocalTolerance:
+    """Snapshot comparison distinguishes sparse noise from local regressions."""
+
+    @staticmethod
+    def _page_writing(image: Image.Image) -> MagicMock:
+        page = _make_page()
+
+        def screenshot(*, path, **_kwargs):
+            image.save(path)
+
+        page.screenshot.side_effect = screenshot
+        return page
+
+    def test_concentrated_change_fails_below_global_threshold(self, tmp_path, monkeypatch):
+        baseline = Image.new("RGB", (128, 128), "black")
+        actual = baseline.copy()
+        for x in range(8):
+            for y in range(8):
+                actual.putpixel((x, y), (255, 255, 255))
+        baseline.save(tmp_path / "icon.png")
+        monkeypatch.setattr(sr, "SNAPSHOTS_DIR", tmp_path)
+
+        with pytest.raises(AssertionError, match="concentrated change"):
+            sr._assert_snapshot_with_threshold(
+                self._page_writing(actual),
+                "icon",
+                0.01,
+                local_tolerance=0.05,
+            )
+
+    def test_distributed_noise_passes_local_tolerance(self, tmp_path, monkeypatch):
+        baseline = Image.new("RGB", (128, 128), "black")
+        actual = baseline.copy()
+        for x in range(0, 128, 32):
+            for y in range(0, 128, 32):
+                actual.putpixel((x, y), (255, 255, 255))
+        baseline.save(tmp_path / "font-noise.png")
+        monkeypatch.setattr(sr, "SNAPSHOTS_DIR", tmp_path)
+
+        sr._assert_snapshot_with_threshold(
+            self._page_writing(actual),
+            "font-noise",
+            0.01,
+            local_tolerance=0.01,
+        )
+
+    def test_omitted_local_tolerance_keeps_global_only_comparison(
+        self, tmp_path, monkeypatch
+    ):
+        baseline = Image.new("RGB", (128, 128), "black")
+        actual = baseline.copy()
+        for x in range(8):
+            for y in range(8):
+                actual.putpixel((x, y), (255, 255, 255))
+        baseline.save(tmp_path / "existing-scenario.png")
+        monkeypatch.setattr(sr, "SNAPSHOTS_DIR", tmp_path)
+
+        sr._assert_snapshot_with_threshold(
+            self._page_writing(actual), "existing-scenario", 0.01
+        )
+
+
 # ---------------------------------------------------------------------------
 # set_viewport interaction
 # ---------------------------------------------------------------------------
@@ -493,4 +555,3 @@ class TestDocAnimationMp4:
 
         with pytest.raises(RuntimeError, match="ffmpeg is required to capture MP4 animations"):
             sr.capture_doc_animation(page, scenario)
-

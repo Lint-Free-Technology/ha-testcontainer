@@ -253,6 +253,7 @@ snapshot
             root: my-tooltip-element
             padding: "20 8 8 8"   # more space at top for tooltip arrow
             threshold: 0.001
+            local_tolerance: 0.05  # optional maximum within a 32x32 tile
 
 Shadow-root traversal
 ---------------------
@@ -1291,6 +1292,7 @@ def run_assertions(page: Page, scenario: dict[str, Any]) -> None:
         atype = assertion["type"]
         if atype == "snapshot":
             threshold = assertion.get("threshold", 0.0)
+            local_tolerance = assertion.get("local_tolerance")
             clip: dict[str, float] | None = None
             if "root" in assertion:
                 rect = _get_doc_image_rect(page, assertion["root"])
@@ -1301,8 +1303,14 @@ def run_assertions(page: Page, scenario: dict[str, Any]) -> None:
                     "width": rect["w"] + pl + pr,
                     "height": rect["h"] + pt + pb,
                 }
-            if threshold > 0.0 or clip is not None:
-                _assert_snapshot_with_threshold(page, assertion["name"], threshold, clip=clip)
+            if threshold > 0.0 or local_tolerance is not None or clip is not None:
+                _assert_snapshot_with_threshold(
+                    page,
+                    assertion["name"],
+                    threshold,
+                    local_tolerance=local_tolerance,
+                    clip=clip,
+                )
             else:
                 assert_snapshot(page, assertion["name"])
         elif atype in {
@@ -1334,6 +1342,7 @@ def _assert_snapshot_with_threshold(
     name: str,
     threshold: float,
     *,
+    local_tolerance: float | None = None,
     clip: dict[str, float] | None = None,
 ) -> None:
     """Take a screenshot and compare to baseline, tolerating minor pixel differences.
@@ -1353,11 +1362,19 @@ def _assert_snapshot_with_threshold(
         up to 0.1 % of pixels to differ.  Use this to tolerate minor
         cross-platform font-rendering differences without masking real
         visual regressions.
+    local_tolerance:
+        Optional maximum fraction of changed pixels in any 32 by 32 pixel
+        tile.  Unlike the whole-image *threshold*, this catches small,
+        concentrated changes (for example an icon colour change) while still
+        allowing sparse font-rendering noise spread across the image.  When
+        omitted, comparison retains the original whole-image-only behaviour.
     clip:
         Optional ``{x, y, width, height}`` dict to crop the screenshot to a
         specific region.  When ``None`` the full viewport is captured.
     """
     __tracebackhide__ = True
+    if local_tolerance is not None and not 0.0 <= local_tolerance <= 1.0:
+        raise ValueError("local_tolerance must be between 0.0 and 1.0")
     _snapshots_dir = SNAPSHOTS_DIR
     if _snapshots_dir is None:
         # Fall back to the calling test file's snapshots/ directory.
@@ -1415,6 +1432,44 @@ def _assert_snapshot_with_threshold(
                 f"({diff_fraction:.4%}), threshold is {threshold:.4%}. "
                 "Run with SNAPSHOT_UPDATE=1 to accept new baseline."
             )
+
+        if local_tolerance is not None:
+            tile_size = 32
+            width, height = diff.size
+            # Half-tile overlap prevents a concentrated change from escaping
+            # detection merely because it crosses a tile boundary.
+            x_starts = list(range(0, max(width - tile_size, 0) + 1, tile_size // 2))
+            y_starts = list(range(0, max(height - tile_size, 0) + 1, tile_size // 2))
+            last_x = max(width - tile_size, 0)
+            last_y = max(height - tile_size, 0)
+            if not x_starts or x_starts[-1] != last_x:
+                x_starts.append(last_x)
+            if not y_starts or y_starts[-1] != last_y:
+                y_starts.append(last_y)
+            for top in y_starts:
+                for left in x_starts:
+                    right = min(left + tile_size, width)
+                    bottom = min(top + tile_size, height)
+                    tile = diff.crop((left, top, right, bottom))
+                    try:
+                        tile_diff_pixels = sum(
+                            1 for p in tile.get_flattened_data() if any(c > 0 for c in p)
+                        )
+                    except AttributeError:
+                        tile_diff_pixels = sum(  # type: ignore[attr-defined]
+                            1 for p in tile.getdata() if any(c > 0 for c in p)
+                        )
+                    tile_pixels = (right - left) * (bottom - top)
+                    tile_fraction = tile_diff_pixels / tile_pixels
+                    if tile_fraction > local_tolerance:
+                        raise AssertionError(
+                            f"Snapshot mismatch for '{name}': concentrated change in "
+                            f"tile ({left}, {top})-({right}, {bottom}); "
+                            f"{tile_diff_pixels}/{tile_pixels} pixels differ "
+                            f"({tile_fraction:.4%}), local tolerance is "
+                            f"{local_tolerance:.4%}. Run with SNAPSHOT_UPDATE=1 "
+                            "to accept new baseline."
+                        )
 
     except ImportError:
         # Pillow not installed — fall back to byte-level comparison (no tolerance).
