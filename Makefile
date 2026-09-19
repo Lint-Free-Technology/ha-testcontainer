@@ -48,7 +48,7 @@ fetch-plugin:
 list-plugin-releases:
 	$(PYTHON) scripts/fetch_plugin.py $(PLUGIN) --list
 
-## Install Python dependencies (test extras)
+## Install Python dependencies (test extras). Include playright dependencies in codespace
 install:
 	pip install -e ".[test]"
 	@if [ "$$(uname)" = "Linux" ]; then \
