@@ -242,9 +242,10 @@ class TestPushLovelaceConfig:
 class TestContainerStartupUnit:
     """Unit tests for container startup and onboarding state detection."""
 
+    @patch("ha_testcontainer.container.LogMessageWaitStrategy")
     @patch("ha_testcontainer.container.requests.get")
     @patch("ha_testcontainer.container.time.sleep")
-    def test_wait_for_ha_success(self, mock_sleep, mock_get, container: HATestContainer):
+    def test_wait_for_ha_success(self, mock_sleep, mock_get, mock_log_wait, container: HATestContainer):
         """_wait_for_ha completes successfully when the root URL returns 200."""
         container.get_url = MagicMock(return_value="http://localhost:8123")
 
@@ -259,10 +260,15 @@ class TestContainerStartupUnit:
         mock_get.assert_called_with("http://localhost:8123/", timeout=5)
         # Verify no sleep was needed
         mock_sleep.assert_not_called()
+        # Verify LogMessageWaitStrategy was invoked as expected
+        mock_log_wait.assert_called_once_with("Home Assistant is running")
+        mock_log_wait.return_value.with_startup_timeout.assert_called_once_with(10)
+        mock_log_wait.return_value.with_startup_timeout.return_value.wait_until_ready.assert_called_once_with(container)
 
+    @patch("ha_testcontainer.container.LogMessageWaitStrategy")
     @patch("ha_testcontainer.container.requests.get")
     @patch("ha_testcontainer.container.time.sleep")
-    def test_wait_for_ha_retry_and_success(self, mock_sleep, mock_get, container: HATestContainer):
+    def test_wait_for_ha_retry_and_success(self, mock_sleep, mock_get, mock_log_wait, container: HATestContainer):
         """_wait_for_ha retries on RequestException or non-200 and eventually succeeds."""
         container.get_url = MagicMock(return_value="http://localhost:8123")
 
@@ -282,11 +288,14 @@ class TestContainerStartupUnit:
 
         assert mock_get.call_count == 3
         assert mock_sleep.call_count == 2
+        # Verify LogMessageWaitStrategy was invoked as expected
+        mock_log_wait.assert_called_once_with("Home Assistant is running")
 
+    @patch("ha_testcontainer.container.LogMessageWaitStrategy")
     @patch("ha_testcontainer.container.requests.get")
     @patch("ha_testcontainer.container.time.sleep")
     @patch("ha_testcontainer.container.time.monotonic")
-    def test_wait_for_ha_timeout(self, mock_monotonic, mock_sleep, mock_get, container: HATestContainer):
+    def test_wait_for_ha_timeout(self, mock_monotonic, mock_sleep, mock_get, mock_log_wait, container: HATestContainer):
         """_wait_for_ha raises TimeoutError if timeout is exceeded."""
         container.get_url = MagicMock(return_value="http://localhost:8123")
 
@@ -295,6 +304,9 @@ class TestContainerStartupUnit:
 
         with pytest.raises(TimeoutError, match="Home Assistant did not become ready within"):
             container._wait_for_ha()
+
+        # Verify LogMessageWaitStrategy was invoked as expected
+        mock_log_wait.assert_called_once_with("Home Assistant is running")
 
     @patch("ha_testcontainer.container.requests.get")
     @patch("ha_testcontainer.container.time.sleep")
