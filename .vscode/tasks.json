@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    // Creates .venv and installs all test dependencies. Install the browser
+    // separately when needed (for example, with `playwright install chromium`).
+    {
+      "label": "Python: Set up virtual environment",
+      "type": "shell",
+      "command": "python3 -m venv .venv && source .venv/bin/activate && pip install -e '.[test]'",
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "group": "setup"
+      }
+    }
+  ]
+}

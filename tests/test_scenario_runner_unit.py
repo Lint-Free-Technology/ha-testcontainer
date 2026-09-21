@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import io
 import shutil
-from unittest.mock import MagicMock, call
+from unittest.mock import ANY, MagicMock, call
 
 import pytest
 from PIL import Image, ImageSequence
@@ -206,6 +206,126 @@ class TestSnapshotLocalTolerance:
         sr._assert_snapshot_with_threshold(
             self._page_writing(actual), "existing-scenario", 0.01
         )
+
+
+# ---------------------------------------------------------------------------
+# Inline assertions in interaction sequences
+# ---------------------------------------------------------------------------
+
+
+class TestInlineAssertions:
+    """Assertions can be evaluated at intermediate interaction states."""
+
+    def test_assertion_types_can_be_interspersed_with_interactions(self):
+        page = _make_page()
+        page.evaluate.side_effect = [
+            {"present": True},
+            {"present": False},
+        ]
+        scenario = {
+            "interactions": [
+                {
+                    "type": "element_present",
+                    "root": "my-card",
+                    "selector": ".before",
+                },
+                {"type": "wait", "ms": 250},
+                {
+                    "type": "element_absent",
+                    "root": "my-card",
+                    "selector": ".before",
+                },
+            ]
+        }
+
+        sr.run_interactions(page, scenario)
+
+        assert page.mock_calls == [
+            call.evaluate(ANY),
+            call.wait_for_timeout(250),
+            call.evaluate(ANY),
+        ]
+
+    def test_snapshots_can_be_taken_before_and_after_an_interaction(self, monkeypatch):
+        page = _make_page()
+        snapshot = MagicMock()
+        monkeypatch.setattr(sr, "assert_snapshot", snapshot)
+        scenario = {
+            "interactions": [
+                {"type": "snapshot", "name": "card_default"},
+                {"type": "wait", "ms": 250},
+                {"type": "snapshot", "name": "card_after_wait"},
+            ]
+        }
+
+        sr.run_interactions(page, scenario)
+
+        assert snapshot.call_args_list == [
+            call(page, "card_default"),
+            call(page, "card_after_wait"),
+        ]
+
+    def test_assert_step_groups_multiple_assertions(self):
+        page = _make_page()
+        page.evaluate.side_effect = [
+            {"present": True},
+            {"present": False},
+        ]
+        scenario = {
+            "interactions": [
+                {
+                    "type": "assert",
+                    "assertions": [
+                        {
+                            "type": "element_present",
+                            "root": "my-card",
+                            "selector": ".visible",
+                        },
+                        {
+                            "type": "element_absent",
+                            "root": "my-card",
+                            "selector": ".hidden",
+                        },
+                    ],
+                }
+            ]
+        }
+
+        sr.run_interactions(page, scenario)
+
+        assert page.evaluate.call_count == 2
+
+    def test_assertions_attached_to_interaction_run_after_it(self):
+        page = _make_page()
+        page.evaluate.return_value = {"present": True}
+        scenario = {
+            "interactions": [
+                {
+                    "type": "wait",
+                    "ms": 250,
+                    "assertions": [
+                        {
+                            "type": "element_present",
+                            "root": "my-card",
+                            "selector": ".visible",
+                        }
+                    ],
+                }
+            ]
+        }
+
+        sr.run_interactions(page, scenario)
+
+        assert page.mock_calls == [
+            call.wait_for_timeout(250),
+            call.evaluate(ANY),
+        ]
+
+    def test_assert_step_requires_an_assertions_list(self):
+        page = _make_page()
+
+        with pytest.raises(ValueError, match="requires an 'assertions' list"):
+            sr.run_interactions(page, {"interactions": [{"type": "assert"}]})
 
 
 # ---------------------------------------------------------------------------
