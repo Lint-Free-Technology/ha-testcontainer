@@ -414,7 +414,16 @@ breakpoints or to verify how a card adapts to different screen sizes.
   root: my-card                   # optional — crop to this element
   padding: "20 8 8 8"            # optional — extra whitespace (top right bottom left)
   threshold: 0.001               # optional — pixel-diff tolerance (0.0–1.0)
+  local_tolerance: 0.05          # optional — max difference in any 32x32 tile
 ```
+
+`threshold` limits the fraction of changed pixels across the entire image,
+which is useful for allowing distributed browser rendering or font noise.  A
+small genuine regression can remain below that global limit, however.  Set
+`local_tolerance` to additionally limit the changed fraction in every 32 by 32
+pixel tile, so concentrated changes such as an icon colour change still fail.
+It is an optional tuning knob; existing scenarios keep their current global
+threshold behaviour when it is omitted.
 
 ### `element_present` / `element_absent`
 

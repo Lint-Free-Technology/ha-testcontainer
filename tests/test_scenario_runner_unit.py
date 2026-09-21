@@ -107,6 +107,107 @@ class TestObjectPropertyAssertions:
             sr.run_assertions(page, {"assertions": [assertion]})
 
 
+class TestSnapshotLocalTolerance:
+    """Snapshot comparison distinguishes sparse noise from local regressions."""
+
+    @staticmethod
+    def _page_writing(image: Image.Image) -> MagicMock:
+        page = _make_page()
+
+        def screenshot(*, path, **_kwargs):
+            image.save(path)
+
+        page.screenshot.side_effect = screenshot
+        return page
+
+    def test_run_assertions_forwards_local_tolerance(self, monkeypatch):
+        page = _make_page()
+        assert_snapshot = MagicMock()
+        monkeypatch.setattr(sr, "_assert_snapshot_with_threshold", assert_snapshot)
+
+        sr.run_assertions(
+            page,
+            {
+                "assertions": [
+                    {
+                        "type": "snapshot",
+                        "name": "card",
+                        "local_tolerance": 0.05,
+                    }
+                ]
+            },
+        )
+
+        assert_snapshot.assert_called_once_with(
+            page, "card", 0.0, local_tolerance=0.05, clip=None
+        )
+
+    @pytest.mark.parametrize("local_tolerance", [-0.01, 1.01, "0.05", True])
+    def test_local_tolerance_rejects_out_of_range_values(self, local_tolerance):
+        with pytest.raises(ValueError, match="local_tolerance must be between 0.0 and 1.0"):
+            sr._assert_snapshot_with_threshold(_make_page(), "card", 0.0, local_tolerance=local_tolerance)
+
+    @pytest.mark.parametrize("local_tolerance", [0.0, 1.0])
+    def test_local_tolerance_accepts_inclusive_boundaries(
+        self, tmp_path, monkeypatch, local_tolerance
+    ):
+        baseline = Image.new("RGB", (8, 8), "black")
+        baseline.save(tmp_path / "card.png")
+        monkeypatch.setattr(sr, "SNAPSHOTS_DIR", tmp_path)
+
+        sr._assert_snapshot_with_threshold(
+            self._page_writing(baseline), "card", 0.0, local_tolerance=local_tolerance
+        )
+
+    def test_concentrated_change_fails_below_global_threshold(self, tmp_path, monkeypatch):
+        baseline = Image.new("RGB", (128, 128), "black")
+        actual = baseline.copy()
+        for x in range(8):
+            for y in range(8):
+                actual.putpixel((x, y), (255, 255, 255))
+        baseline.save(tmp_path / "icon.png")
+        monkeypatch.setattr(sr, "SNAPSHOTS_DIR", tmp_path)
+
+        with pytest.raises(AssertionError, match="concentrated change"):
+            sr._assert_snapshot_with_threshold(
+                self._page_writing(actual),
+                "icon",
+                0.01,
+                local_tolerance=0.05,
+            )
+
+    def test_distributed_noise_passes_local_tolerance(self, tmp_path, monkeypatch):
+        baseline = Image.new("RGB", (128, 128), "black")
+        actual = baseline.copy()
+        for x in range(0, 128, 32):
+            for y in range(0, 128, 32):
+                actual.putpixel((x, y), (255, 255, 255))
+        baseline.save(tmp_path / "font-noise.png")
+        monkeypatch.setattr(sr, "SNAPSHOTS_DIR", tmp_path)
+
+        sr._assert_snapshot_with_threshold(
+            self._page_writing(actual),
+            "font-noise",
+            0.01,
+            local_tolerance=0.01,
+        )
+
+    def test_omitted_local_tolerance_keeps_global_only_comparison(
+        self, tmp_path, monkeypatch
+    ):
+        baseline = Image.new("RGB", (128, 128), "black")
+        actual = baseline.copy()
+        for x in range(8):
+            for y in range(8):
+                actual.putpixel((x, y), (255, 255, 255))
+        baseline.save(tmp_path / "existing-scenario.png")
+        monkeypatch.setattr(sr, "SNAPSHOTS_DIR", tmp_path)
+
+        sr._assert_snapshot_with_threshold(
+            self._page_writing(actual), "existing-scenario", 0.01
+        )
+
+
 # ---------------------------------------------------------------------------
 # Inline assertions in interaction sequences
 # ---------------------------------------------------------------------------
