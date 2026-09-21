@@ -30,8 +30,9 @@ A scenario is a single `.yaml` file that describes:
 
 1. **Which Lovelace card(s)** to push to the test dashboard.
 2. **What entity states** need to be prepared before the page loads (`setup:`).
-3. **What interactions** (hovers, clicks, service calls) to run after the page loads.
-4. **What assertions** (CSS properties, snapshots, element presence) to verify.
+3. **What interactions and inline assertions** (hovers, clicks, service calls,
+   snapshots) to run after the page loads.
+4. **What final assertions** (CSS properties, snapshots, element presence) to verify.
 5. Optionally, **teardown** steps to run after assertions — even when the test fails.
 
 No Python code is required.  The test runner (`test_scenarios.py`) picks up
@@ -234,7 +235,7 @@ setup:
 | Block | Runs | Typical use |
 |---|---|---|
 | `setup:` | Before page navigation | `ha_service`, `device_registry_update`, `wait` |
-| `interactions:` | After page navigation | `hover`, `click`, `ha_service`, `wait` |
+| `interactions:` | After page navigation | actions and inline assertions, in order |
 | `teardown:` | After assertions (always, even on failure) | `ha_service` state reset, `wait` |
 
 Only `ha_service`, `device_registry_update`, and `wait` are meaningful in
@@ -244,6 +245,47 @@ points.
 ---
 
 ## Interactions reference
+
+### Inline assertions — verify intermediate states
+
+Place any assertion type directly in `interactions:` to run it at that exact
+point in the sequence. This is the simplest way to test an initial state,
+intermediate state, and final state in one scenario. The normal top-level
+`assertions:` block still runs after the entire interaction sequence.
+
+```yaml
+interactions:
+  # Initial UI state, immediately after navigation.
+  - type: snapshot
+    name: tile_light_on
+
+  - type: click
+    root: hui-tile-card
+    selector: ha-switch
+    settle_ms: 800
+
+  # State after the click.
+  - type: element_present
+    root: hui-tile-card
+    selector: .off-indicator
+  - type: snapshot
+    name: tile_light_off
+```
+
+For several checks at the same point, group them with an `assert` step:
+
+```yaml
+- type: assert
+  assertions:
+    - type: element_present
+      root: hui-tile-card
+      selector: ha-tile-icon
+    - type: snapshot
+      name: tile_light_on
+```
+
+You can also attach an `assertions:` list to an ordinary interaction. Those
+checks run immediately after that interaction settles.
 
 ### `ha_service` — call a Home Assistant service
 
@@ -631,26 +673,31 @@ setup:
       brightness: 255
     settle_ms: 300
 
-# --- Assertions for the "on" state ---
-assertions:
-  - type: element_present
-    root: hui-tile-card
-    selector: ha-tile-icon
-
-  - type: snapshot
-    name: tile_light_on
-    root: hui-tile-card
-    padding: 8
-    threshold: 0.002
-
-# --- Interactions that change state mid-test ---
-# Turn the light off via the card's toggle, then re-assert.
+# --- Verify the "on" state, then change state mid-test ---
 interactions:
+  - type: assert
+    assertions:
+      - type: element_present
+        root: hui-tile-card
+        selector: ha-tile-icon
+      - type: snapshot
+        name: tile_light_on
+        root: hui-tile-card
+        padding: 8
+        threshold: 0.002
+
+# Turn the light off via the card's toggle, then assert its final state.
   - type: ha_service
     domain: light
     service: turn_off
     entity_id: light.bed_light
     settle_ms: 800
+
+  - type: snapshot
+    name: tile_light_off
+    root: hui-tile-card
+    padding: 8
+    threshold: 0.002
 
 # --- Cleanup ---
 # Always restore the entity to a neutral state.
@@ -661,23 +708,22 @@ teardown:
     entity_id: light.bed_light
 ```
 
-> **Tip** — if you need to assert multiple states in a single scenario, split
-> assertions and intermediate interactions across the `interactions:` list:
+> **Tip** — if you need to assert multiple states in a single scenario,
+> intersperse assertion types and interactions in the `interactions:` list:
 >
 > ```yaml
 > interactions:
+>   - type: snapshot
+>     name: tile_light_on
+>
 >   - type: ha_service
 >     domain: light
 >     service: turn_off
 >     entity_id: light.bed_light
 >     settle_ms: 800
 >
-> assertions:
 >   - type: snapshot
 >     name: tile_light_off
 >     root: hui-tile-card
 >     padding: 8
 > ```
->
-> For more complex multi-state scenarios, consider splitting them into
-> separate YAML files so each test is independently runnable and clearly named.
