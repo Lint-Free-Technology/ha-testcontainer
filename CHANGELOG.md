@@ -2,6 +2,16 @@
 
 <!-- version list -->
 
+## v2.11.0 (2026-09-21)
+
+### Features
+
+- Add scenario helper `clear_demo_geo_locations` so map testing with show_all can be deterministic
+  to entity numbers that will show in maps.
+  ([#31](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/31),
+  [`2cb9239`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/2cb9239e24ab39b7c2b8029fc371331c1cc1d3d8))
+
+
 ## v2.10.0 (2026-09-21)
 
 ### Bug Fixes
