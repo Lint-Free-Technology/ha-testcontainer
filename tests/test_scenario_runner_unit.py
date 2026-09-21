@@ -389,6 +389,69 @@ class TestSetViewportInteraction:
             sr.run_interactions(page, scenario)
 
 
+class TestClearDemoGeoLocationsInteraction:
+    """The Demo geo-location cleanup only removes Demo-owned map markers."""
+
+    def test_removes_only_demo_geo_locations(self):
+        page = _make_page()
+        ha = MagicMock()
+        states_response = MagicMock()
+        states_response.json.return_value = [
+            {
+                "entity_id": "geo_location.bushfire",
+                "attributes": {"source": "demo"},
+            },
+            {
+                "entity_id": "geo_location.real_alert",
+                "attributes": {"source": "nws"},
+            },
+            {
+                "entity_id": "sensor.demo_temperature",
+                "attributes": {"source": "demo"},
+            },
+        ]
+        delete_response = MagicMock()
+        ha.api.side_effect = [states_response, delete_response]
+
+        sr.run_interactions(
+            page,
+            {"setup": [{"type": "clear_demo_geo_locations"}]},
+            ha=ha,
+            key="setup",
+        )
+
+        assert ha.api.call_args_list == [
+            call("GET", "states"),
+            call("DELETE", "states/geo_location.bushfire"),
+        ]
+        states_response.raise_for_status.assert_called_once_with()
+        delete_response.raise_for_status.assert_called_once_with()
+
+    def test_is_a_no_op_when_no_demo_geo_locations_exist(self):
+        page = _make_page()
+        ha = MagicMock()
+        states_response = MagicMock()
+        states_response.json.return_value = []
+        ha.api.return_value = states_response
+
+        sr.run_interactions(
+            page,
+            {"setup": [{"type": "clear_demo_geo_locations"}]},
+            ha=ha,
+            key="setup",
+        )
+
+        ha.api.assert_called_once_with("GET", "states")
+
+    def test_requires_the_ha_container(self):
+        with pytest.raises(ValueError, match="clear_demo_geo_locations interaction requires"):
+            sr.run_interactions(
+                _make_page(),
+                {"setup": [{"type": "clear_demo_geo_locations"}]},
+                key="setup",
+            )
+
+
 class TestInputTextInteraction:
     """run_interactions dispatches input_text correctly."""
 
