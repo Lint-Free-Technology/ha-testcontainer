@@ -514,6 +514,7 @@ import os
 import shutil
 import tarfile
 from collections.abc import Callable
+from itertools import chain
 from pathlib import Path
 from typing import Any
 
@@ -1406,6 +1407,39 @@ def _assert_snapshot_with_threshold(
     try:
         from PIL import Image, ImageChops  # type: ignore[import]
 
+        def count_changed_pixels(image: Any) -> int:
+            """Return the number of pixels with at least one changed channel."""
+            try:
+                channel_values = iter(image.get_flattened_data())
+                first_value = next(channel_values)
+            except AttributeError:
+                # Pillow before get_flattened_data yielded RGB tuples via getdata.
+                return sum(
+                    1
+                    for pixel in image.getdata()
+                    if any(channel > 0 for channel in pixel)
+                )
+            except StopIteration:
+                return 0
+
+            if isinstance(first_value, tuple):
+                # Current Pillow releases return one tuple per RGB pixel.
+                return int(any(channel > 0 for channel in first_value)) + sum(
+                    1
+                    for pixel in channel_values
+                    if any(channel > 0 for channel in pixel)
+                )
+
+            # Some Pillow releases flatten to channel values instead.  Regroup
+            # those values before counting so each changed RGB pixel is counted once.
+            channel_count = len(image.getbands())
+            flattened_values = chain((first_value,), channel_values)
+            return sum(
+                1
+                for pixel in zip(*([iter(flattened_values)] * channel_count))
+                if any(channel > 0 for channel in pixel)
+            )
+
         img_base = Image.open(baseline).convert("RGB")
         img_actual = Image.open(actual).convert("RGB")
 
@@ -1417,11 +1451,7 @@ def _assert_snapshot_with_threshold(
             )
 
         diff = ImageChops.difference(img_base, img_actual)
-        # get_flattened_data returns one tuple-per-pixel; fall back to getdata for older Pillow.
-        try:
-            diff_pixels = sum(1 for p in diff.get_flattened_data() if any(c > 0 for c in p))
-        except AttributeError:
-            diff_pixels = sum(1 for p in diff.getdata() if any(c > 0 for c in p))  # type: ignore[attr-defined]
+        diff_pixels = count_changed_pixels(diff)
         total_pixels = img_base.size[0] * img_base.size[1]
         diff_fraction = diff_pixels / total_pixels
 
@@ -1451,14 +1481,7 @@ def _assert_snapshot_with_threshold(
                     right = min(left + tile_size, width)
                     bottom = min(top + tile_size, height)
                     tile = diff.crop((left, top, right, bottom))
-                    try:
-                        tile_diff_pixels = sum(
-                            1 for p in tile.get_flattened_data() if any(c > 0 for c in p)
-                        )
-                    except AttributeError:
-                        tile_diff_pixels = sum(  # type: ignore[attr-defined]
-                            1 for p in tile.getdata() if any(c > 0 for c in p)
-                        )
+                    tile_diff_pixels = count_changed_pixels(tile)
                     tile_pixels = (right - left) * (bottom - top)
                     tile_fraction = tile_diff_pixels / tile_pixels
                     if tile_fraction > local_tolerance:
