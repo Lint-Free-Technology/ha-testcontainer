@@ -228,6 +228,21 @@ setup:
       brightness: 200
 ```
 
+### Remove Demo geo-location events before map tests
+
+The Demo integration creates random geo-location event names and replaces an
+event every minute. Before testing a map card, clear the events that are live
+at setup time with `clear_demo_geo_locations`:
+
+```yaml
+setup:
+  - type: clear_demo_geo_locations
+```
+
+The helper removes only `geo_location.*` entities whose state attribute is
+`source: demo`; scenario-created or integration-provided map markers are left
+untouched. It is safe when no Demo geo-location events exist.
+
 ---
 
 ## Setup and teardown blocks

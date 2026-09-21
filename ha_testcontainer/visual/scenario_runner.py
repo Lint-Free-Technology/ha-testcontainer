@@ -36,9 +36,9 @@ an assertion or snapshot.
 A ``setup:`` key (same structure as ``interactions:``) may also be declared.
 Setup interactions run **before** page navigation and are intended for
 ``ha_service`` and other state-preparation calls that must complete before the
-page first loads.  Only ``ha_service``, ``device_registry_update``, and
-``wait`` (plus any registered extension types) are meaningful in a ``setup``
-block.
+page first loads.  Only ``ha_service``, ``device_registry_update``,
+``clear_demo_geo_locations``, and ``wait`` (plus any registered extension
+types) are meaningful in a ``setup`` block.
 
 A ``teardown:`` key (same structure as ``interactions:``) may optionally be
 declared.  Teardown interactions run **after** all assertions and doc-image
@@ -125,6 +125,19 @@ device_registry_update
           - type: device_registry_update
             entity_id: light.bed_light   # OR device_id: abc123
             area_name: Bedroom           # OR area_id: bedroom
+
+clear_demo_geo_locations
+    Remove the currently active geolocation events created by Home
+    Assistant's ``demo`` integration.  This is useful before testing a map
+    card so the randomly generated Demo events do not appear alongside the
+    scenario's own markers.  The helper discovers live ``geo_location``
+    states and removes only those with ``source: demo``; it is safe to run
+    when no such events exist.  Requires the ``ha`` container.
+
+    .. code-block:: yaml
+
+        setup:
+          - type: clear_demo_geo_locations
 
 dispatch_window_event
     Dispatch a ``CustomEvent`` on ``window`` from inside the browser.
@@ -1035,7 +1048,8 @@ def run_interactions(
     list to an interaction to run checks immediately afterwards.
 
     Pass the HA container as *ha* when any ``ha_service``,
-    ``device_registry_update``, ``write_config_file``, or any
+    ``device_registry_update``, ``clear_demo_geo_locations``,
+    ``write_config_file``, or any
     consumer-registered interaction types that require the container are
     present in the scenario.
 
@@ -1076,6 +1090,13 @@ def run_interactions(
                     "pass ha= to run_interactions()"
                 )
             _update_device_registry(ha, interaction)
+        elif itype == "clear_demo_geo_locations":
+            if ha is None:
+                raise ValueError(
+                    "clear_demo_geo_locations interaction requires the ha container — "
+                    "pass ha= to run_interactions()"
+                )
+            _clear_demo_geo_locations(ha)
         elif itype == "dispatch_window_event":
             event = interaction["event"]
             settle_ms = interaction.get("settle_ms", 1000)
@@ -1241,6 +1262,26 @@ def _call_ha_service(ha: HATestContainer, interaction: dict[str, Any]) -> None:
     if "entity_id" in interaction:
         data["entity_id"] = interaction["entity_id"]
     ha.api("POST", f"services/{domain}/{service}", json=data).raise_for_status()
+
+
+def _clear_demo_geo_locations(ha: HATestContainer) -> None:
+    """Remove live geo-location states created by the Demo integration.
+
+    Demo event names and therefore their entity IDs are random, so identify
+    them by the stable ``source: demo`` state attribute instead of maintaining
+    a list of possible event names.
+    """
+    __tracebackhide__ = True
+    states_response = ha.api("GET", "states")
+    states_response.raise_for_status()
+    for state in states_response.json():
+        entity_id = state.get("entity_id", "")
+        attributes = state.get("attributes", {})
+        if (
+            entity_id.startswith("geo_location.")
+            and attributes.get("source") == "demo"
+        ):
+            ha.api("DELETE", f"states/{entity_id}").raise_for_status()
 
 
 def _update_device_registry(ha: HATestContainer, interaction: dict[str, Any]) -> None:
