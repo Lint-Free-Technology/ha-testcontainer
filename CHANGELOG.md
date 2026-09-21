@@ -2,6 +2,26 @@
 
 <!-- version list -->
 
+## v2.10.0 (2026-09-21)
+
+### Bug Fixes
+
+- Correct local snapshot tolerance comparison
+  ([`97e4f68`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/97e4f681ae141ce7685eca308ef85e68675a773b))
+
+- Validate snapshot local tolerance input
+  ([`97e4f68`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/97e4f681ae141ce7685eca308ef85e68675a773b))
+
+### Features
+
+- Detect concentrated snapshot changes
+  ([`97e4f68`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/97e4f681ae141ce7685eca308ef85e68675a773b))
+
+- Inline assertions during interactions allowing for mid state checks and snapshots
+  ([#30](https://github.com/Lint-Free-Technology/ha-testcontainer/pull/30),
+  [`4521694`](https://github.com/Lint-Free-Technology/ha-testcontainer/commit/4521694a059d71c34af5ae6c2d53183674f63ee1))
+
+
 ## v2.9.0 (2026-09-19)
 
 ### Features
