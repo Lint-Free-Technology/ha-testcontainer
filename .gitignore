@@ -59,5 +59,6 @@ ha-config/www/dashboard/*/
 # Editor / OS
 .DS_Store
 .idea/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 *.swp

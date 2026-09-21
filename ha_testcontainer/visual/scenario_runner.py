@@ -27,9 +27,11 @@ specify what Lovelace config is pushed:
 Interaction types
 -----------------
 Interactions are declared under the top-level ``interactions:`` key and are
-executed (in order) after navigation but before assertions.  They are useful
-for triggering hover effects, tooltips, clicks that change entity state, or
-any other action that must happen before assertions and snapshots.
+executed in order after navigation. Assertion steps can be interspersed with
+interactions, allowing a scenario to verify its initial, intermediate, and
+final UI states. They are useful for triggering hover effects, tooltips,
+clicks that change entity state, or any other action that must happen before
+an assertion or snapshot.
 
 A ``setup:`` key (same structure as ``interactions:``) may also be declared.
 Setup interactions run **before** page navigation and are intended for
@@ -253,6 +255,27 @@ snapshot
             root: my-tooltip-element
             padding: "20 8 8 8"   # more space at top for tooltip arrow
             threshold: 0.001
+
+Inline assertions
+    Any assertion type can also appear directly in the ``interactions:``
+    sequence. This makes it possible to snapshot or check a state before and
+    after an interaction:
+
+    .. code-block:: yaml
+
+        interactions:
+          - type: snapshot
+            name: card_default
+          - type: click
+            root: my-card
+            selector: ha-switch
+          - type: snapshot
+            name: card_toggled
+
+    Use ``type: assert`` with an ``assertions:`` list to group several
+    assertions at one point in the sequence. An ordinary interaction may also
+    include an ``assertions:`` list; those assertions run immediately after
+    that interaction.
 
 Shadow-root traversal
 ---------------------
@@ -568,6 +591,28 @@ MP4_LOSSY_THRESHOLD: int = 12
 
 _interaction_extensions: dict[str, Callable] = {}
 _assertion_extensions: dict[str, Callable] = {}
+
+
+# Keep built-in assertion names in one place so they can be recognised when
+# they appear in an ``interactions:`` sequence as well as in top-level
+# ``assertions:``.
+_BUILTIN_ASSERTION_TYPES = frozenset(
+    {
+        "element_present",
+        "element_absent",
+        "css_property",
+        "css_property_not_equals",
+        "css_variable",
+        "text_equals",
+        "text_startswith",
+        "object_property_present",
+        "object_property_absent",
+        "object_property_text_equals",
+        "object_property_text_starts_with",
+        "object_property_text_ends_with",
+        "snapshot",
+    }
+)
 
 
 def register_interaction_type(name: str, handler: Callable) -> None:
@@ -981,8 +1026,11 @@ def run_interactions(
     """Execute interactions declared under *key* in *scenario*.
 
     Interactions let tests put the page into a specific UI state (e.g. a
-    hover that reveals a tooltip, a click that changes entity state) before
-    running assertions and snapshots.
+    hover that reveals a tooltip, a click that changes entity state). Built-in
+    and registered assertion types may appear as steps in the same sequence,
+    so they run at that exact point. Alternatively, use ``type: assert`` with
+    an ``assertions:`` list to group assertions, or add an ``assertions:``
+    list to an interaction to run checks immediately afterwards.
 
     Pass the HA container as *ha* when any ``ha_service``,
     ``device_registry_update``, ``write_config_file``, or any
@@ -1001,6 +1049,9 @@ def run_interactions(
     __tracebackhide__ = True
     for interaction in scenario.get(key, []):
         itype = interaction["type"]
+        if itype == "assert":
+            _run_inline_assertions(page, interaction)
+            continue
         if itype == "hover":
             _perform_hover(page, interaction)
         elif itype == "hover_away":
@@ -1042,6 +1093,8 @@ def run_interactions(
             page.wait_for_timeout(interaction.get("ms", 500))
         elif itype == "set_viewport":
             _perform_set_viewport(page, interaction)
+        elif itype in _BUILTIN_ASSERTION_TYPES or itype in _assertion_extensions:
+            _run_assertion(page, interaction)
         elif itype in _interaction_extensions:
             _interaction_extensions[itype](page, interaction, ha=ha)
         else:
@@ -1049,6 +1102,20 @@ def run_interactions(
                 f"Unknown interaction type: {itype!r}. "
                 "Register custom types with scenario_runner.register_interaction_type()."
             )
+
+        if "assertions" in interaction:
+            _run_inline_assertions(page, interaction)
+
+
+def _run_inline_assertions(page: Page, step: dict[str, Any]) -> None:
+    """Run the ``assertions`` list attached to an interaction-sequence step."""
+    assertions = step.get("assertions")
+    if not isinstance(assertions, list):
+        raise ValueError("Inline assertion step requires an 'assertions' list")
+    for assertion in assertions:
+        if not isinstance(assertion, dict):
+            raise ValueError("Each inline assertion must be a mapping")
+        _run_assertion(page, assertion)
 
 
 def _perform_hover(page: Page, interaction: dict[str, Any]) -> None:
@@ -1288,45 +1355,37 @@ def run_assertions(page: Page, scenario: dict[str, Any]) -> None:
     """Execute every assertion declared in *scenario*."""
     __tracebackhide__ = True
     for assertion in scenario.get("assertions", []):
-        atype = assertion["type"]
-        if atype == "snapshot":
-            threshold = assertion.get("threshold", 0.0)
-            clip: dict[str, float] | None = None
-            if "root" in assertion:
-                rect = _get_doc_image_rect(page, assertion["root"])
-                pt, pr, pb, pl = _parse_padding(assertion.get("padding", 0))
-                clip = {
-                    "x": max(0, rect["x"] - pl),
-                    "y": max(0, rect["y"] - pt),
-                    "width": rect["w"] + pl + pr,
-                    "height": rect["h"] + pt + pb,
-                }
-            if threshold > 0.0 or clip is not None:
-                _assert_snapshot_with_threshold(page, assertion["name"], threshold, clip=clip)
-            else:
-                assert_snapshot(page, assertion["name"])
-        elif atype in {
-            "element_present",
-            "element_absent",
-            "css_property",
-            "css_property_not_equals",
-            "css_variable",
-            "text_equals",
-            "text_startswith",
-            "object_property_present",
-            "object_property_absent",
-            "object_property_text_equals",
-            "object_property_text_starts_with",
-            "object_property_text_ends_with",
-        }:
-            _run_dom_assertion(page, assertion, atype)
-        elif atype in _assertion_extensions:
-            _assertion_extensions[atype](page, assertion)
+        _run_assertion(page, assertion)
+
+
+def _run_assertion(page: Page, assertion: dict[str, Any]) -> None:
+    """Execute one assertion, whether top-level or inline with interactions."""
+    atype = assertion["type"]
+    if atype == "snapshot":
+        threshold = assertion.get("threshold", 0.0)
+        clip: dict[str, float] | None = None
+        if "root" in assertion:
+            rect = _get_doc_image_rect(page, assertion["root"])
+            pt, pr, pb, pl = _parse_padding(assertion.get("padding", 0))
+            clip = {
+                "x": max(0, rect["x"] - pl),
+                "y": max(0, rect["y"] - pt),
+                "width": rect["w"] + pl + pr,
+                "height": rect["h"] + pt + pb,
+            }
+        if threshold > 0.0 or clip is not None:
+            _assert_snapshot_with_threshold(page, assertion["name"], threshold, clip=clip)
         else:
-            raise ValueError(
-                f"Unknown assertion type: {atype!r}. "
-                "Register custom types with scenario_runner.register_assertion_type()."
-            )
+            assert_snapshot(page, assertion["name"])
+    elif atype in _BUILTIN_ASSERTION_TYPES:
+        _run_dom_assertion(page, assertion, atype)
+    elif atype in _assertion_extensions:
+        _assertion_extensions[atype](page, assertion)
+    else:
+        raise ValueError(
+            f"Unknown assertion type: {atype!r}. "
+            "Register custom types with scenario_runner.register_assertion_type()."
+        )
 
 
 def _assert_snapshot_with_threshold(
