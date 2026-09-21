@@ -1433,7 +1433,11 @@ def _assert_snapshot_with_threshold(
         specific region.  When ``None`` the full viewport is captured.
     """
     __tracebackhide__ = True
-    if local_tolerance is not None and not 0.0 <= local_tolerance <= 1.0:
+    if local_tolerance is not None and (
+        isinstance(local_tolerance, bool)
+        or not isinstance(local_tolerance, (int, float))
+        or not 0.0 <= local_tolerance <= 1.0
+    ):
         raise ValueError("local_tolerance must be between 0.0 and 1.0")
     _snapshots_dir = SNAPSHOTS_DIR
     if _snapshots_dir is None:

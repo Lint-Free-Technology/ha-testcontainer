@@ -142,7 +142,7 @@ class TestSnapshotLocalTolerance:
             page, "card", 0.0, local_tolerance=0.05, clip=None
         )
 
-    @pytest.mark.parametrize("local_tolerance", [-0.01, 1.01])
+    @pytest.mark.parametrize("local_tolerance", [-0.01, 1.01, "0.05", True])
     def test_local_tolerance_rejects_out_of_range_values(self, local_tolerance):
         with pytest.raises(ValueError, match="local_tolerance must be between 0.0 and 1.0"):
             sr._assert_snapshot_with_threshold(_make_page(), "card", 0.0, local_tolerance=local_tolerance)
